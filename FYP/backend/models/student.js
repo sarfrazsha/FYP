@@ -4,9 +4,9 @@ const schema = mongoose.Schema;
 const Student = new schema(
     {
 
-        studentId: String,
+       
         classNo: {
-            type: String // Class association
+            type: String 
         },
         studentName: {
             type: String,
@@ -14,10 +14,11 @@ const Student = new schema(
         },
         studentAge: {
             type: Number,
-            required: true
+            required: true,
+            max: [15, 'Age cannot exceed 15']
         },
         studentRollNo: {
-            type: Number,
+            type: String,
             required: true
         },
         studentGender: {
@@ -26,13 +27,18 @@ const Student = new schema(
         },
         studentEmail: {
             type: String,
-            required: true
+            required: true,
+            match: [/^.*@gmail\.com$/, 'Email must end with @gmail.com']
         },
         studentPassword: {
             type: String,
             required: true
         },
-        studentRole: String
+        studentImage:{
+            type:String,
+
+        }
+     
     }
 )
 

@@ -9,6 +9,19 @@ const announcementSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    targetAudience: {
+        type: String,
+        enum: ['all', 'student', 'parent', 'teacher', 'admin'],
+        default: 'all',
+    },
+    isAlert: {
+        type: Boolean,
+        default: false,
+    },
+    expiresAt: {
+        type: Date,
+        default: null, 
+    },
     readBy: {
         type: [String],
         default: [],

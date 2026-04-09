@@ -2,64 +2,143 @@ import React, { useState, useEffect } from 'react';
 import { Container, Table, Button, Modal, Form, Card, Badge, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import Axios from 'axios';
 
 const ManageClasses = () => {
     const navigate = useNavigate();
     // --- MOCK DATA ---
     const initialClasses = [
-        { id: 1, name: 'Grade 10', section: 'A', teacher: 'Alice Smith', teacherEmail: 'alice.smith@school.edu' },
-        { id: 2, name: 'Grade 11', section: 'B', teacher: 'Bob Jones', teacherEmail: 'bob.jones@school.edu' },
-        { id: 3, name: 'Grade 09', section: 'C', teacher: 'Charlie Brown', teacherEmail: 'charlie.brown@school.edu' }
+        { id: 1, name: 'Class 1', section: 'A', teacher: 'Respected Naeem Akhter', teacherEmail: 'naeem@gmail.com' },
+        { id: 2, name: 'Class 2', section: 'A', teacher: 'Respected Saleem Akhter', teacherEmail: 'saleem@gmail.com' },
+        { id: 3, name: 'Class 3', section: 'A', teacher: 'Respected Qari Illyas Shb', teacherEmail: 'illyas@gmail.com' },
+        { id: 4, name: 'Class 4', section: 'A', teacher: 'Respected Naeem Akhter', teacherEmail: 'naeem@gmail.com' },
+        { id: 5, name: 'Class 5', section: 'A', teacher: 'Respected Saleem Akhter', teacherEmail: 'saleem@gmail.com' }
     ];
 
     const initialStudents = [
         {
             id: '1',
-            studentName: 'John Doe',
+            studentName: 'Abdul Basit',
             studentAge: '14',
             studentRollNo: '2024-001',
             studentGender: 'Male',
-            studentClass: 'Grade 10', // Maps to class
-            studentEmail: 'john.doe@student.edu',
-            studentProfilePicture: 'https://randomuser.me/api/portraits/men/1.jpg',
-            parentName: 'Michael Doe',
-            parentPhone: '+1 234 567 8901',
-            parentEmail: 'michael.doe@parent.edu',
-            parentAddress: '123 Elm Street, Cityville'
+            studentClass: 'Class 1',
+            studentEmail: 'abdul@gmail.com',
+            studentPassword: 'password123',
+            studentProfilePicture: '',
+            parentName: 'Khalid Mehmood',
+            parentPhone: '03245627336',
+            parentEmail: 'khalid@gmail.com',
+            parentAddress: 'House 14, Street 3, Mohalla Qadirabad, Multan'
         },
         {
             id: '2',
-            studentName: 'Jane Smith',
-            studentAge: '15',
+            studentName: 'M Muntaha',
+            studentAge: '13',
             studentRollNo: '2024-002',
-            studentGender: 'Female',
-            studentClass: 'Grade 10', // Maps to class
-            studentEmail: 'jane.smith@student.edu',
-            studentProfilePicture: 'https://randomuser.me/api/portraits/women/1.jpg',
-            parentName: 'Sarah Smith',
-            parentPhone: '+1 987 654 3210',
-            parentEmail: 'sarah.smith@parent.edu',
-            parentAddress: '456 Oak Ave, Townsville'
+            studentGender: 'Male',
+            studentClass: 'Class 1',
+            studentEmail: 'muntaha@gmail.com',
+            studentProfilePicture: '',
+            parentName: 'Tariq Hussain',
+            parentPhone: '03017894523',
+            parentEmail: 'tariq@gmail.com',
+            parentAddress: 'Gali Masjid Wali, Bahawalpur'
         },
         {
             id: '3',
-            studentName: 'Sam Wilson',
-            studentAge: '16',
+            studentName: 'M Sharafat',
+            studentAge: '15',
             studentRollNo: '2024-003',
             studentGender: 'Male',
-            studentClass: 'Grade 11',
-            studentEmail: 'sam.wilson@student.edu',
-            studentProfilePicture: 'https://randomuser.me/api/portraits/men/2.jpg',
-            parentName: 'Paul Wilson',
-            parentPhone: '+1 555 123 4567',
-            parentEmail: 'paul.wilson@parent.edu',
-            parentAddress: '789 Pine Way, Metropolis'
+            studentClass: 'Class 2',
+            studentEmail: 'sharafat@gmail.com',
+            studentProfilePicture: '',
+            parentName: 'Nawaz Ahmed',
+            parentPhone: '03129876543',
+            parentEmail: 'nawaz@gmail.com',
+            parentAddress: 'Mohalla Ahmedpur, Near Jamia Masjid, Rahim Yar Khan'
+        },
+        {
+            id: '4',
+            studentName: 'M Qasim',
+            studentAge: '12',
+            studentRollNo: '2024-004',
+            studentGender: 'Male',
+            studentClass: 'Class 2',
+            studentEmail: 'qasim@gmail.com',
+            studentProfilePicture: '',
+            parentName: 'Aslam Shah',
+            parentPhone: '03001234567',
+            parentEmail: 'aslam@gmail.com',
+            parentAddress: 'House 22, Gulshan Colony, Lahore'
+        },
+        {
+            id: '5',
+            studentName: 'Hamza Ali',
+            studentAge: '11',
+            studentRollNo: '2024-005',
+            studentGender: 'Male',
+            studentClass: 'Class 3',
+            studentEmail: 'hamza@gmail.com',
+            studentProfilePicture: '',
+            parentName: 'Imran Ali',
+            parentPhone: '03451237890',
+            parentEmail: 'imran@gmail.com',
+            parentAddress: 'House 5, Mohalla Farooqabad, Faisalabad'
+        },
+        {
+            id: '6',
+            studentName: 'Bilal Ahmed',
+            studentAge: '10',
+            studentRollNo: '2024-006',
+            studentGender: 'Male',
+            studentClass: 'Class 4',
+            studentEmail: 'bilal@gmail.com',
+            studentProfilePicture: '',
+            parentName: 'Rashid Ahmed',
+            parentPhone: '03331234567',
+            parentEmail: 'rashid@gmail.com',
+            parentAddress: 'House 9, Street 7, Satellite Town, Rawalpindi'
+        },
+        {
+            id: '7',
+            studentName: 'Usman Ghani',
+            studentAge: '12',
+            studentRollNo: '2024-007',
+            studentGender: 'Male',
+            studentClass: 'Class 5',
+            studentEmail: 'usman@gmail.com',
+            studentProfilePicture: '',
+            parentName: 'Ghani Sahab',
+            parentPhone: '03009871234',
+            parentEmail: 'ghani@gmail.com',
+            parentAddress: 'Mohalla Islamabad, Near Government School, Sahiwal'
         }
     ];
 
     // --- STATE MANAGEMENT ---
     const [classes, setClasses] = useState(initialClasses);
-    const [allStudents, setAllStudents] = useState(initialStudents);
+
+    // Merge hardcoded students with database students
+    const [allStudents, setAllStudents] = useState([...initialStudents]);
+
+    const fetchAllStudents = async () => {
+        try {
+            const response = await Axios.get('http://localhost:8080/api/students-detailed');
+            // Merge: mock data + database data
+            setAllStudents([...initialStudents, ...response.data]);
+        } catch (err) {
+            console.error("Fetch error in classes:", err);
+            setAllStudents(initialStudents);
+        }
+    };
+
+    useEffect(() => {
+        fetchAllStudents();
+        window.addEventListener('focus', fetchAllStudents);
+        return () => window.removeEventListener('focus', fetchAllStudents);
+    }, []);
 
     // CRUD State
     const [show, setShow] = useState(false);
@@ -74,6 +153,7 @@ const ManageClasses = () => {
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [isEditingStudent, setIsEditingStudent] = useState(false);
     const [editingStudentData, setEditingStudentData] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const handleSaveStudent = () => {
         setAllStudents(allStudents.map(s => s.id === editingStudentData.id ? editingStudentData : s));
@@ -200,8 +280,14 @@ const ManageClasses = () => {
     );
 
     const renderClassDetail = () => {
-        // Filter students belonging to this class
-        const enrolledStudents = allStudents.filter(s => s.studentClass === selectedClass.name);
+        // Filter students belonging to this class and apply search
+        const enrolledStudents = allStudents.filter(s => {
+            const matchesClass = s.studentClass === selectedClass.name;
+            const matchesSearch = !searchTerm || 
+                s.studentName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                (s.studentRollNo && s.studentRollNo.toString().toLowerCase().includes(searchTerm.toLowerCase()));
+            return matchesClass && matchesSearch;
+        });
 
         return (
             <>
@@ -224,13 +310,32 @@ const ManageClasses = () => {
                 </div>
 
                 <Card className="border-0 shadow-sm rounded-4 overflow-hidden bg-white">
-                    <Card.Header className="bg-white border-bottom py-4 px-4 d-flex justify-content-between align-items-center">
+                    <Card.Header className="bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
                         <h5 className="fw-bold mb-0 text-dark d-flex align-items-center">
                             <i className="bi bi-people-fill text-primary me-2"></i> Class Roster
                         </h5>
-                        <Badge bg="secondary" className="bg-opacity-10 text-secondary border px-3 py-2 rounded-pill">
-                            {enrolledStudents.length} Students Enrolled
-                        </Badge>
+                        <div className="d-flex align-items-center gap-3">
+                            <div className="input-group input-group-sm" style={{ width: '250px' }}>
+                                <span className="input-group-text bg-light border-0">
+                                    <i className="bi bi-search text-muted"></i>
+                                </span>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="Search student..."
+                                    className="bg-light border-0 shadow-none"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                                {searchTerm && (
+                                    <Button variant="light" className="border-0 bg-light" onClick={() => setSearchTerm('')}>
+                                        <i className="bi bi-x"></i>
+                                    </Button>
+                                )}
+                            </div>
+                            <Badge bg="secondary" className="bg-opacity-10 text-secondary border px-3 py-2 rounded-pill">
+                                {enrolledStudents.length} Students
+                            </Badge>
+                        </div>
                     </Card.Header>
                     <Card.Body className="p-0">
                         <Table responsive hover className="mb-0 custom-table">
@@ -256,12 +361,18 @@ const ManageClasses = () => {
                                     >
                                         <td className="ps-4 py-3 border-bottom-0 border-top">
                                             <div className="d-flex align-items-center">
-                                                <img
-                                                    src={student.studentProfilePicture}
-                                                    alt={student.studentName}
-                                                    className="rounded-circle me-3 border border-2 border-white shadow-sm"
-                                                    style={{ width: '45px', height: '45px', objectFit: 'cover' }}
-                                                />
+                                                {student.studentProfilePicture ? (
+                                                    <img
+                                                        src={student.studentProfilePicture}
+                                                        alt={student.studentName}
+                                                        className="rounded-circle me-3 border border-2 border-white shadow-sm"
+                                                        style={{ width: '45px', height: '45px', objectFit: 'cover' }}
+                                                    />
+                                                ) : (
+                                                    <div className="bg-primary bg-opacity-10 text-primary rounded-circle me-3 fw-bold d-flex justify-content-center align-items-center" style={{ width: '45px', height: '45px' }}>
+                                                        {student.studentName.charAt(0)}
+                                                    </div>
+                                                )}
                                                 <div>
                                                     <span className="fw-bold text-dark d-block" style={{ fontSize: '1.05rem' }}>{student.studentName}</span>
                                                     <span className="text-muted small">{student.studentEmail}</span>
@@ -336,7 +447,7 @@ const ManageClasses = () => {
                                             type="text"
                                             className="p-3 bg-light border-0 rounded-3"
                                             value={currentClass.teacher}
-                                            placeholder="John Doe"
+                                            placeholder="e.g. Respected Naeem Akhter"
                                             onChange={(e) => setCurrentClass({ ...currentClass, teacher: e.target.value })}
                                         />
                                     </Form.Group>
@@ -348,7 +459,7 @@ const ManageClasses = () => {
                                             type="email"
                                             className="p-3 bg-light border-0 rounded-3"
                                             value={currentClass.teacherEmail}
-                                            placeholder="john@school.edu"
+                                            placeholder="teacher@gmail.com"
                                             onChange={(e) => setCurrentClass({ ...currentClass, teacherEmail: e.target.value })}
                                         />
                                     </Form.Group>
@@ -373,12 +484,18 @@ const ManageClasses = () => {
 
                             {/* Header Banner */}
                             <div className="bg-primary bg-gradient p-5 position-relative text-center text-md-start d-flex flex-column flex-md-row align-items-center gap-4">
-                                <img
-                                    src={selectedStudent.studentProfilePicture}
-                                    alt="Profile"
-                                    className="rounded-circle border border-4 border-white shadow-lg"
-                                    style={{ width: '120px', height: '120px', objectFit: 'cover', marginTop: '-10px' }}
-                                />
+                                {selectedStudent.studentProfilePicture ? (
+                                    <img
+                                        src={selectedStudent.studentProfilePicture}
+                                        alt="Profile"
+                                        className="rounded-circle border border-4 border-white shadow-lg"
+                                        style={{ width: '120px', height: '120px', objectFit: 'cover', marginTop: '-10px' }}
+                                    />
+                                ) : (
+                                    <div className="bg-white text-primary rounded-circle border border-4 border-white shadow-lg d-flex justify-content-center align-items-center fw-bold" style={{ width: '120px', height: '120px', fontSize: '3rem', marginTop: '-10px' }}>
+                                        {selectedStudent.studentName.charAt(0)}
+                                    </div>
+                                )}
                                 <div className="text-white">
                                     <h2 className="fw-bold mb-1">{selectedStudent.studentName}</h2>
                                     <div className="d-flex flex-wrap justify-content-center justify-content-md-start gap-2 mb-2">
@@ -406,10 +523,16 @@ const ManageClasses = () => {
                                                     <Form.Control type="text" className="p-2 bg-light border-0 rounded-3" value={editingStudentData.studentName} onChange={(e) => setEditingStudentData({ ...editingStudentData, studentName: e.target.value })} />
                                                 </Form.Group>
                                             </Col>
-                                            <Col md={6}>
+                                             <Col md={6}>
                                                 <Form.Group>
                                                     <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Email</Form.Label>
                                                     <Form.Control type="email" className="p-2 bg-light border-0 rounded-3" value={editingStudentData.studentEmail} onChange={(e) => setEditingStudentData({ ...editingStudentData, studentEmail: e.target.value })} />
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={6}>
+                                                <Form.Group>
+                                                    <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Password</Form.Label>
+                                                    <Form.Control type="text" className="p-2 bg-light border-0 rounded-3" value={editingStudentData.studentPassword || ''} onChange={(e) => setEditingStudentData({ ...editingStudentData, studentPassword: e.target.value })} />
                                                 </Form.Group>
                                             </Col>
                                             <Col md={4}>
@@ -471,6 +594,11 @@ const ManageClasses = () => {
                                                     <Col xs={6}>
                                                         <p className="text-muted small mb-1 text-uppercase ls-1 fw-semibold">Gender</p>
                                                         <p className="mb-0 fw-bold text-dark fs-5">{selectedStudent.studentGender}</p>
+                                                    </Col>
+                                                    <Col xs={12}>
+                                                        <p className="text-muted small mb-1 text-uppercase ls-1 fw-semibold">Student Credentials</p>
+                                                        <p className="mb-1 text-dark fw-medium small"><i className="bi bi-envelope me-2"></i>{selectedStudent.studentEmail}</p>
+                                                        <p className="mb-0 text-dark fw-medium small"><i className="bi bi-key me-2"></i>{selectedStudent.studentPassword || '********'}</p>
                                                     </Col>
                                                 </Row>
                                             </div>

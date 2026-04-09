@@ -3,14 +3,15 @@ const schema = mongoose.Schema;
 
 const Teacher = new schema(
     {
-        teacher_id: String,
+        
         teacherName:{
             type: String,
             required:true
         },
         teacherContact:{
             type: String,
-            required:true
+            required:true,
+            match: [/^\d{11}$/, 'Phone number must be exactly 11 digits.']
         },
         teacherClass:{
             type: String,
@@ -23,16 +24,14 @@ const Teacher = new schema(
      
         teacherEmail:{
             type: String,
-            required: true
+            required: true,
+            match: [/^.*@gmail\.com$/, 'Email must end with @gmail.com']
         } ,
         teacherPassword:{
             type: String,
             required: true
-        },
-        role:{
-            type: String,
-            required: true
         }
+       
     
     }
 )

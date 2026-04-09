@@ -1,242 +1,6 @@
-// import React, { useState, useEffect } from 'react';
-// import { Container, Form, Button, Row, Col, Card, Modal, Badge, Table } from 'react-bootstrap';
-// import { useLocation, Navigate } from 'react-router-dom';
-// import Layout from '../components/Layout';
-// import Axios from 'axios';
 
-// const ManageStudents = () => {
-//     const location = useLocation();
-//     const { email, role } = location.state || {
-//         email: localStorage.getItem('userEmail'),
-//         role: localStorage.getItem('userRole')
-//     };
-
-//     // Redirect if not logged in or not an admin
-//     if (!email || (role !== 'Admin' && role !== 'admin')) {
-//         return <Navigate to="/" replace />;
-//     }
-
-//     const [validated, setValidated] = useState(false);
-//     const [showSuccessModal, setShowSuccessModal] = useState(false);
-//     const [showDetailModal, setShowDetailModal] = useState(false);
-//     const [selectedStudent, setSelectedStudent] = useState(null);
-//     const [students, setStudents] = useState([]); 
-
-//     const [formData, setFormData] = useState({
-//         studentName: '',
-//         studentAge: '',
-//         studentRollNo: '',
-//         studentGender: '',
-//         studentEmail: '',
-//         studentPassword: '',
-//         studentRole: 'student',
-//         parentName: '',
-//         parentPhone: '',
-//         parentEmail: '',
-//         parentPassword: '',
-//         parentAddress: '',
-//         parentRole: 'Parent'
-//     });
-
-//     // Handle Input Changes
-//     const handleChange = (e) => {
-//         const { name, value } = e.target;
-//         setFormData(prev => ({ ...prev, [name]: value }));
-//     };
-
-//     const handleSubmit = async (event) => {
-//         const form = event.currentTarget;
-//         event.preventDefault();
-
-//         if (form.checkValidity() === false) {
-//             event.stopPropagation();
-//             setValidated(true);
-//             return;
-//         }
-
-//         try {
-//             // Placeholder for your API call
-//             // await Axios.post('/api/register-student', formData);
-//             setStudents([...students, { ...formData, id: Date.now() }]);
-//             setShowSuccessModal(true);
-//             setFormData({ /* reset form */ });
-//             setValidated(false);
-//         } catch (error) {
-//             console.error("Error registering student:", error);
-//         }
-//     };
-
-//     return (
-//         <Layout>
-//             <Container fluid>
-//                 {/* Header Section */}
-//                 <div className="mb-4 d-flex justify-content-between align-items-end">
-//                     <div>
-//                         <h2 className="fw-bold text-dark">Student Management</h2>
-//                         <p className="text-muted mb-0">Onboard new students and manage existing records.</p>
-//                     </div>
-//                     <Badge bg="primary" className="p-2 px-3 rounded-pill">
-//                         Total Students: {students.length}
-//                     </Badge>
-//                 </div>
-
-//                 <Row className="g-4">
-//                     {/* Registration Form */}
-//                     <Col lg={12}>
-//                         <Card className="border-0 shadow-sm rounded-4 mb-4">
-//                             <Card.Body className="p-4">
-//                                 <h5 className="fw-bold mb-4 d-flex align-items-center">
-//                                     <i className="bi bi-person-plus-fill me-2 text-primary"></i> 
-//                                     Register New Admission
-//                                 </h5>
-//                                 <Form noValidate validated={validated} onSubmit={handleSubmit}>
-//                                     <Row>
-//                                         {/* Left Column: Student Info */}
-//                                         <Col md={6} className="border-end pe-md-4">
-//                                             <h6 className="text-primary fw-bold mb-3 small text-uppercase ls-1">Student Details</h6>
-//                                             <Form.Group className="mb-3">
-//                                                 <Form.Label className="small fw-bold">Full Name</Form.Label>
-//                                                 <Form.Control required name="studentName" value={formData.studentName} onChange={handleChange} placeholder="Enter full name" />
-//                                             </Form.Group>
-//                                             <Row>
-//                                                 <Col md={6}>
-//                                                     <Form.Group className="mb-3">
-//                                                         <Form.Label className="small fw-bold">Roll No</Form.Label>
-//                                                         <Form.Control required name="studentRollNo" value={formData.studentRollNo} onChange={handleChange} placeholder="e.g. S101" />
-//                                                     </Form.Group>
-//                                                 </Col>
-//                                                 <Col md={6}>
-//                                                     <Form.Group className="mb-3">
-//                                                         <Form.Label className="small fw-bold">Gender</Form.Label>
-//                                                         <Form.Select required name="studentGender" value={formData.studentGender} onChange={handleChange}>
-//                                                             <option value="">Select...</option>
-//                                                             <option>Male</option>
-//                                                             <option>Female</option>
-//                                                         </Form.Select>
-//                                                     </Form.Group>
-//                                                 </Col>
-//                                             </Row>
-//                                             <Form.Group className="mb-3">
-//                                                 <Form.Label className="small fw-bold">Student Email</Form.Label>
-//                                                 <Form.Control required type="email" name="studentEmail" value={formData.studentEmail} onChange={handleChange} placeholder="email@school.com" />
-//                                             </Form.Group>
-//                                         </Col>
-
-//                                         {/* Right Column: Parent Info */}
-//                                         <Col md={6} className="ps-md-4">
-//                                             <h6 className="text-success fw-bold mb-3 small text-uppercase ls-1">Parent/Guardian Details</h6>
-//                                             <Form.Group className="mb-3">
-//                                                 <Form.Label className="small fw-bold">Parent Name</Form.Label>
-//                                                 <Form.Control required name="parentName" value={formData.parentName} onChange={handleChange} placeholder="Enter parent's name" />
-//                                             </Form.Group>
-//                                             <Form.Group className="mb-3">
-//                                                 <Form.Label className="small fw-bold">Contact Number</Form.Label>
-//                                                 <Form.Control required name="parentPhone" value={formData.parentPhone} onChange={handleChange} placeholder="+1 234 567 890" />
-//                                             </Form.Group>
-//                                             <Form.Group className="mb-3">
-//                                                 <Form.Label className="small fw-bold">Home Address</Form.Label>
-//                                                 <Form.Control required as="textarea" rows={1} name="parentAddress" value={formData.parentAddress} onChange={handleChange} placeholder="Enter physical address" />
-//                                             </Form.Group>
-//                                         </Col>
-//                                     </Row>
-//                                     <div className="text-end mt-4">
-//                                         <Button type="submit" variant="primary" className="rounded-pill px-5 fw-bold shadow-sm">
-//                                             Submit Admission
-//                                         </Button>
-//                                     </div>
-//                                 </Form>
-//                             </Card.Body>
-//                         </Card>
-//                     </Col>
-
-//                     {/* Student List Table */}
-//                     <Col lg={12}>
-//                         <Card className="border-0 shadow-sm rounded-4">
-//                             <Card.Body className="p-0">
-//                                 <div className="p-4 border-bottom">
-//                                     <h5 className="fw-bold mb-0">Recent Registrations</h5>
-//                                 </div>
-//                                 <div className="table-responsive">
-//                                     <Table hover className="align-middle mb-0 custom-table">
-//                                         <thead className="bg-light">
-//                                             <tr>
-//                                                 <th className="ps-4">Student</th>
-//                                                 <th>Roll No</th>
-//                                                 <th>Parent</th>
-//                                                 <th>Contact</th>
-//                                                 <th className="text-end pe-4">Actions</th>
-//                                             </tr>
-//                                         </thead>
-//                                         <tbody>
-//                                             {students.length > 0 ? students.map((s, idx) => (
-//                                                 <tr key={idx}>
-//                                                     <td className="ps-4">
-//                                                         <div className="d-flex align-items-center">
-//                                                             <div className="bg-primary bg-opacity-10 text-primary rounded-circle p-2 me-2 small fw-bold">
-//                                                                 {s.studentName.charAt(0)}
-//                                                             </div>
-//                                                             {s.studentName}
-//                                                         </div>
-//                                                     </td>
-//                                                     <td><Badge bg="light" text="dark">{s.studentRollNo}</Badge></td>
-//                                                     <td>{s.parentName}</td>
-//                                                     <td>{s.parentPhone}</td>
-//                                                     <td className="text-end pe-4">
-//                                                         <Button variant="outline-primary" size="sm" className="rounded-pill px-3" onClick={() => { setSelectedStudent(s); setShowDetailModal(true); }}>
-//                                                             View Profile
-//                                                         </Button>
-//                                                     </td>
-//                                                 </tr>
-//                                             )) : (
-//                                                 <tr>
-//                                                     <td colSpan="5" className="text-center py-5 text-muted">
-//                                                         No students registered in this session yet.
-//                                                     </td>
-//                                                 </tr>
-//                                             )}
-//                                         </tbody>
-//                                     </Table>
-//                                 </div>
-//                             </Card.Body>
-//                         </Card>
-//                     </Col>
-//                 </Row>
-//             </Container>
-
-//             {/* Modals remain same as your original code, just add rounded-4 class */}
-//             <Modal show={showSuccessModal} onHide={() => setShowSuccessModal(false)} centered>
-//                 <Modal.Body className="text-center p-5 rounded-4">
-//                     <i className="bi bi-check-circle-fill text-success display-1 mb-4"></i>
-//                     <h3 className="fw-bold">Registration Successful</h3>
-//                     <p className="text-muted">Student and Parent accounts have been created.</p>
-//                     <Button variant="success" onClick={() => setShowSuccessModal(false)} className="rounded-pill px-4 mt-3">Great!</Button>
-//                 </Modal.Body>
-//             </Modal>
-
-//             <style>
-//                 {`
-//                     .custom-table thead th {
-//                         font-size: 0.75rem;
-//                         text-transform: uppercase;
-//                         letter-spacing: 0.5px;
-//                         font-weight: 700;
-//                         color: #6c757d;
-//                         border: none;
-//                         padding: 1.2rem 1rem;
-//                     }
-//                     .custom-table tbody td {
-//                         padding: 1rem;
-//                         border-bottom: 1px solid #f8f9fa;
-//                     }
-//                 `}
-//             </style>
-//         </Layout>
-//     );
-// };
-
-// export default ManageStudents;
-import React, { useState, useEffect } from 'react';
-import { Container, Form, Button, Row, Col, Card, Modal, Badge, Table, Alert, Spinner } from 'react-bootstrap';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { Container, Form, Button, Row, Col, Card, Modal, Badge, Table, Alert, Spinner, Breadcrumb } from 'react-bootstrap';
 import { useLocation, Navigate, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Axios from 'axios';
@@ -244,10 +8,23 @@ import Axios from 'axios';
 const ManageStudents = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { email, role } = location.state || {
+    const { email, role, classFilter, openAdd } = location.state || {
         email: localStorage.getItem('userEmail'),
         role: localStorage.getItem('userRole')
     };
+
+    const formRef = useRef(null);
+    const listRef = useRef(null);
+    const studentImageRef = useRef(null);
+    const parentImageRef = useRef(null);
+
+    useLayoutEffect(() => {
+        if (openAdd && formRef.current) {
+            formRef.current.scrollIntoView({ behavior: 'smooth' });
+        } else if (classFilter && listRef.current) {
+            listRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [openAdd, classFilter]);
 
     // SDS Requirement: Role-Based Access Control
     if (!email || (role !== 'Admin' && role !== 'admin')) {
@@ -263,37 +40,71 @@ const ManageStudents = () => {
     const initialStudents = [
         {
             id: '1',
-            studentName: 'John Doe',
+            studentName: 'Abdul Basit',
             studentAge: '14',
             studentRollNo: '2024-001',
             studentGender: 'Male',
-            studentClass: '8th Grade',
-            studentEmail: 'john.doe@student.edu',
+            studentClass: '5th Grade',
+            studentEmail: 'abdul@gmail.com',
             studentPassword: '',
-            studentProfilePicture: 'https://randomuser.me/api/portraits/men/1.jpg',
-            parentName: 'Michael Doe',
-            parentPhone: '+1 234 567 8901',
-            parentEmail: 'michael.doe@parent.edu',
+            studentProfilePicture: '',
+            parentName: 'Khalid Mehmood',
+            parentPhone: '03245627336',
+            parentEmail: 'khalid@gmail.com',
             parentPassword: '',
-            parentAddress: '123 Elm Street, Cityville',
-            parentProfilePicture: 'https://randomuser.me/api/portraits/men/2.jpg'
+            parentAddress: 'House 14, Street 3, Mohalla Qadirabad, Multan',
+            parentProfilePicture: ''
         },
         {
             id: '2',
-            studentName: 'Jane Smith',
+            studentName: 'M Muntaha',
             studentAge: '13',
             studentRollNo: '2024-002',
-            studentGender: 'Female',
-            studentClass: '7th Grade',
-            studentEmail: 'jane.smith@student.edu',
+            studentGender: 'Male',
+            studentClass: '4th Grade',
+            studentEmail: 'muntaha@gmail.com',
             studentPassword: '',
-            studentProfilePicture: 'https://randomuser.me/api/portraits/women/1.jpg',
-            parentName: 'Sarah Smith',
-            parentPhone: '+1 987 654 3210',
-            parentEmail: 'sarah.smith@parent.edu',
+            studentProfilePicture: '',
+            parentName: 'Tariq Hussain',
+            parentPhone: '03017894523',
+            parentEmail: 'tariq@gmail.com',
             parentPassword: '',
-            parentAddress: '456 Oak Ave, Townsville',
-            parentProfilePicture: 'https://randomuser.me/api/portraits/women/2.jpg'
+            parentAddress: 'Gali Masjid Wali, Bahawalpur',
+            parentProfilePicture: ''
+        },
+        {
+            id: '3',
+            studentName: 'M Sharafat',
+            studentAge: '15',
+            studentRollNo: '2024-003',
+            studentGender: 'Male',
+            studentClass: '5th Grade',
+            studentEmail: 'sharafat@gmail.com',
+            studentPassword: '',
+            studentProfilePicture: '',
+            parentName: 'Nawaz Ahmed',
+            parentPhone: '03129876543',
+            parentEmail: 'nawaz@gmail.com',
+            parentPassword: '',
+            parentAddress: 'Mohalla Ahmedpur, Near Jamia Masjid, Rahim Yar Khan',
+            parentProfilePicture: ''
+        },
+        {
+            id: '4',
+            studentName: 'M Qasim',
+            studentAge: '12',
+            studentRollNo: '2024-004',
+            studentGender: 'Male',
+            studentClass: '3rd Grade',
+            studentEmail: 'qasim@gmail.com',
+            studentPassword: '',
+            studentProfilePicture: '',
+            parentName: 'Aslam Shah',
+            parentPhone: '03001234567',
+            parentEmail: 'aslam@gmail.com',
+            parentPassword: '',
+            parentAddress: 'House 22, Gulshan Colony, Lahore',
+            parentProfilePicture: ''
         }
     ];
 
@@ -316,11 +127,25 @@ const ManageStudents = () => {
         parentProfilePicture: ''
     });
 
+    // Image previews for diagnostic purposes
+    const [previews, setPreviews] = useState({
+        student: null,
+        parent: null
+    });
+
+
     // 1. Fetch Students from Node/Express Middleware
     const fetchStudents = async () => {
-        // Simulating data fetch without calling backend
         setLoading(true);
-        setTimeout(() => setLoading(false), 500);
+        try {
+            const response = await Axios.get('http://localhost:8080/api/students-detailed');
+            // Merge: hardcoded mock data + database data
+            setStudents([...initialStudents, ...response.data]);
+        } catch (err) {
+            console.error("Fetch error:", err);
+            setStudents(initialStudents);
+        }
+        setLoading(false);
     };
 
     useEffect(() => { fetchStudents(); }, []);
@@ -330,43 +155,78 @@ const ManageStudents = () => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    // 2. SDS Compliant Submission (Registers Student & Linked Parent)
+ 
     const handleSubmit = async (event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
+    event.preventDefault();
+    const form = event.currentTarget;
 
-        if (form.checkValidity() === false) {
-            event.stopPropagation();
-            setValidated(true);
-            return;
+    if (form.checkValidity() === false) {
+        event.stopPropagation();
+        setValidated(true);
+        return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    console.log("Submitting Admission Data...");
+    console.log("Form State:", formData);
+
+    try {
+        // Create FormData to send files
+        const data = new FormData();
+        data.append("studentName", formData.studentName);
+        data.append("studentAge", formData.studentAge);
+        data.append("studentRollNo", formData.studentRollNo);
+        data.append("studentGender", formData.studentGender);
+        data.append("studentClass", formData.studentClass);
+        data.append("studentEmail", formData.studentEmail);
+        data.append("studentPassword", formData.studentPassword);
+        
+        // Append File objects directly
+        if (formData.studentProfilePicture) {
+            console.log("Attaching Student Picture:", formData.studentProfilePicture.name);
+            data.append("studentProfilePicture", formData.studentProfilePicture);
+        } else {
+            console.warn("No Student Picture selected.");
         }
 
-        setLoading(true);
-        setError(null);
-
-        try {
-            // Disabled hitting the endpoint
-            // await Axios.post('http://localhost:8080/api/register-student-parent', formData);
-
-            // Simulating network delay and using local state
-            setTimeout(() => {
-                setStudents(prev => [...prev, { ...formData, id: Date.now().toString() }]);
-                setShowSuccessModal(true);
-                setFormData({
-                    studentName: '', studentAge: '', studentRollNo: '', studentGender: '', studentClass: '',
-                    studentEmail: '', studentPassword: '', studentProfilePicture: '',
-                    parentName: '', parentPhone: '', parentEmail: '', parentPassword: '',
-                    parentAddress: '', parentProfilePicture: ''
-                });
-                setValidated(false);
-                setLoading(false);
-            }, 500);
-
-        } catch (err) {
-            setError(err.response?.data?.message || "Registration failed. Check if email/roll no already exists.");
-            setLoading(false);
+        data.append("parentName", formData.parentName);
+        data.append("parentPhone", formData.parentPhone);
+        data.append("parentEmail", formData.parentEmail);
+        data.append("parentPassword", formData.parentPassword);
+        data.append("parentAddress", formData.parentAddress);
+        
+        if (formData.parentProfilePicture) {
+            console.log("Attaching Parent Picture:", formData.parentProfilePicture.name);
+            data.append("parentProfilePicture", formData.parentProfilePicture);
+        } else {
+            console.warn("No Parent Picture selected.");
         }
-    };
+
+        // Send to backend - let Axios handle Content-Type and boundaries
+        const response = await Axios.post('http://localhost:8080/students', data);
+        console.log("Upload Success:", response.data);
+
+        // Update local state by re-fetching
+        await fetchStudents();
+
+        setShowSuccessModal(true);
+        setFormData({
+            studentName: '', studentAge: '', studentRollNo: '', studentGender: '', studentClass: '',
+            studentEmail: '', studentPassword: '', studentProfilePicture: '',
+            parentName: '', parentPhone: '', parentEmail: '', parentPassword: '',
+            parentAddress: '', parentProfilePicture: ''
+        });
+        setPreviews({ student: null, parent: null });
+        setValidated(false);
+        setLoading(false);
+
+    } catch (err) {
+        setError(err.response?.data?.message || "Registration failed. Check if email/roll no already exists.");
+        setLoading(false);
+    }
+};
 
     return (
         <Layout>
@@ -375,26 +235,35 @@ const ManageStudents = () => {
 
                 <div className="mb-4 d-flex justify-content-between align-items-center">
                     <div className="d-flex align-items-center gap-3">
-                        <Button
-                            variant="light"
-                            className="rounded-circle shadow-sm border p-2 d-flex align-items-center justify-content-center"
-                            style={{ width: '40px', height: '40px' }}
-                            onClick={() => navigate(-1)}
-                        >
-                            <i className="bi bi-arrow-left fs-5"></i>
-                        </Button>
+                        <div className="d-flex gap-2">
+                            <Button
+                                variant="light"
+                                className="rounded-circle shadow-sm border p-0 d-flex align-items-center justify-content-center"
+                                style={{ width: '40px', height: '40px' }}
+                                onClick={() => navigate(-1)}
+                                title="Go Back"
+                            >
+                                <i className="bi bi-arrow-left fs-5"></i>
+                            </Button>
+                          
+                        </div>
                         <div>
                             <h2 className="fw-bold text-dark mb-0">Student Admission Portal</h2>
-                            <p className="text-muted mb-0">SDS Compliance: Dual-Account Onboarding (Student & Parent)</p>
+                            <Breadcrumb className="small mb-0">
+                               
+                                {classFilter && <Breadcrumb.Item active>Class: {classFilter}</Breadcrumb.Item>}
+                            </Breadcrumb>
                         </div>
                     </div>
-                    <Badge bg="primary" className="p-2 px-3 rounded-pill shadow-sm">
-                        Registered: {students.length}
-                    </Badge>
+                    <div className="d-flex gap-2 align-items-center">
+                        <Badge bg="primary" className="p-2 px-3 rounded-pill shadow-sm">
+                            Total Students: {students.length}
+                        </Badge>
+                    </div>
                 </div>
 
                 <Row className="g-4">
-                    <Col lg={12}>
+                    <Col lg={12} ref={formRef}>
                         <Card className="border-0 shadow-sm rounded-4 mb-4">
                             <Card.Body className="p-4">
                                 <Form noValidate validated={validated} onSubmit={handleSubmit}>
@@ -428,19 +297,26 @@ const ManageStudents = () => {
                                                 <Col md={6}>
                                                     <Form.Group className="mb-3">
                                                         <Form.Label className="small fw-bold">Age</Form.Label>
-                                                        <Form.Control required type="number" name="studentAge" value={formData.studentAge} onChange={handleChange} placeholder="e.g. 15" />
+                                                        <Form.Control required type="number" name="studentAge" max="15" title="Age cannot exceed 15" value={formData.studentAge} onChange={handleChange} placeholder="e.g. 15" />
                                                     </Form.Group>
                                                 </Col>
                                                 <Col md={6}>
                                                     <Form.Group className="mb-3">
-                                                        <Form.Label className="small fw-bold">Class / Grade</Form.Label>
-                                                        <Form.Control required name="studentClass" value={formData.studentClass} onChange={handleChange} placeholder="e.g. 10th Grade" />
+                                                        <Form.Label className="small fw-bold">Class</Form.Label>
+                                                        <Form.Select required name="studentClass" value={formData.studentClass} onChange={handleChange}>
+                                                            <option value="">Select Class...</option>
+                                                            <option>Class 1</option>
+                                                            <option>Class 2</option>
+                                                            <option>Class 3</option>
+                                                            <option>Class 4</option>
+                                                            <option>Class 5</option>
+                                                        </Form.Select>
                                                     </Form.Group>
                                                 </Col>
                                             </Row>
                                             <Form.Group className="mb-3">
                                                 <Form.Label className="small fw-bold">Login Email</Form.Label>
-                                                <Form.Control required type="email" name="studentEmail" value={formData.studentEmail} onChange={handleChange} />
+                                                <Form.Control required type="email" name="studentEmail" pattern="^.*@gmail\.com$" title="Email must end with @gmail.com" value={formData.studentEmail} onChange={handleChange} />
                                             </Form.Group>
                                             <Form.Group className="mb-3">
                                                 <Form.Label className="small fw-bold">Account Password</Form.Label>
@@ -450,16 +326,22 @@ const ManageStudents = () => {
                                                 <Form.Label className="small fw-bold">Student Profile Picture</Form.Label>
                                                 <Form.Control
                                                     type="file"
+                                                    ref={studentImageRef}
                                                     accept="image/*"
                                                     onChange={e => {
                                                         const file = e.target.files[0];
                                                         if (file) {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => setFormData({ ...formData, studentProfilePicture: reader.result });
-                                                            reader.readAsDataURL(file);
+                                                            setFormData(prev => ({ ...prev, studentProfilePicture: file }));
+                                                            setPreviews(prev => ({ ...prev, student: URL.createObjectURL(file) }));
                                                         }
                                                     }}
                                                 />
+                                                {previews.student && (
+                                                    <div className="mt-2 text-center p-2 border rounded bg-light">
+                                                        <img src={previews.student} alt="Preview" style={{ height: '80px', borderRadius: '8px' }} />
+                                                        <div className="small text-muted mt-1">Student Preview</div>
+                                                    </div>
+                                                )}
                                             </Form.Group>
                                         </Col>
 
@@ -472,11 +354,11 @@ const ManageStudents = () => {
                                             </Form.Group>
                                             <Form.Group className="mb-3">
                                                 <Form.Label className="small fw-bold">Guardian Contact</Form.Label>
-                                                <Form.Control required name="parentPhone" value={formData.parentPhone} onChange={handleChange} />
+                                                <Form.Control required name="parentPhone" pattern="[0-9]{11}" title="Phone number must be exactly 11 digits" value={formData.parentPhone} onChange={handleChange} />
                                             </Form.Group>
                                             <Form.Group className="mb-3">
-                                                <Form.Label className="small fw-bold">Guardian Email (For Notifications)</Form.Label>
-                                                <Form.Control required type="email" name="parentEmail" value={formData.parentEmail} onChange={handleChange} />
+                                                <Form.Label className="small fw-bold">Guardian Email </Form.Label>
+                                                <Form.Control required type="email" name="parentEmail" pattern="^.*@gmail\.com$" title="Email must end with @gmail.com" value={formData.parentEmail} onChange={handleChange} />
                                             </Form.Group>
                                             <Form.Group className="mb-3">
                                                 <Form.Label className="small fw-bold">Guardian Password</Form.Label>
@@ -490,16 +372,22 @@ const ManageStudents = () => {
                                                 <Form.Label className="small fw-bold">Guardian Profile Picture</Form.Label>
                                                 <Form.Control
                                                     type="file"
+                                                    ref={parentImageRef}
                                                     accept="image/*"
                                                     onChange={e => {
                                                         const file = e.target.files[0];
                                                         if (file) {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => setFormData({ ...formData, parentProfilePicture: reader.result });
-                                                            reader.readAsDataURL(file);
+                                                            setFormData(prev => ({ ...prev, parentProfilePicture: file }));
+                                                            setPreviews(prev => ({ ...prev, parent: URL.createObjectURL(file) }));
                                                         }
                                                     }}
                                                 />
+                                                {previews.parent && (
+                                                    <div className="mt-2 text-center p-2 border rounded bg-light">
+                                                        <img src={previews.parent} alt="Preview" style={{ height: '80px', borderRadius: '8px' }} />
+                                                        <div className="small text-muted mt-1">Guardian Preview</div>
+                                                    </div>
+                                                )}
                                             </Form.Group>
                                         </Col>
                                     </Row>
@@ -512,57 +400,6 @@ const ManageStudents = () => {
                             </Card.Body>
                         </Card>
                     </Col>
-
-                    {/* Registrations List Table */}
-                    <Col lg={12}>
-                        <Card className="border-0 shadow-sm rounded-4">
-                            <Card.Body className="p-0">
-                                <div className="table-responsive">
-                                    <Table hover className="align-middle mb-0 custom-table">
-                                        <thead className="bg-light">
-                                            <tr>
-                                                <th className="ps-4">Student Name</th>
-                                                <th>Roll No</th>
-                                                <th>Parent Name</th>
-                                                <th>Contact</th>
-                                                <th className="text-end pe-4">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {students.map((s, idx) => (
-                                                <tr key={idx}>
-                                                    <td className="ps-4">
-                                                        <div className="d-flex align-items-center">
-                                                            {s.studentProfilePicture ? (
-                                                                <img src={s.studentProfilePicture} alt="profile" className="rounded-circle me-3 border" style={{ width: '40px', height: '40px', objectFit: 'cover' }} />
-                                                            ) : (
-                                                                <div className="bg-success bg-opacity-10 text-success rounded-circle p-2 me-3 fw-bold d-flex justify-content-center align-items-center" style={{ width: '40px', height: '40px' }}>
-                                                                    {s.studentName.charAt(0)}
-                                                                </div>
-                                                            )}
-                                                            <div>
-                                                                <span className="fw-bold d-block">{s.studentName}</span>
-                                                                <span className="text-muted small">{s.studentEmail}</span>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <Badge bg="secondary" className="mb-1 d-block w-75">{s.studentRollNo}</Badge>
-                                                        <span className="small text-muted">{s.studentClass || '-'}</span>
-                                                    </td>
-                                                    <td>{s.parentName}</td>
-                                                    <td>{s.parentPhone}</td>
-                                                    <td className="text-end pe-4">
-                                                        <Badge bg="success" className="bg-opacity-10 text-success">Active</Badge>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </Table>
-                                </div>
-                            </Card.Body>
-                        </Card>
-                    </Col>
                 </Row>
             </Container>
 
@@ -571,8 +408,8 @@ const ManageStudents = () => {
                     <div className="mb-4">
                         <i className="bi bi-person-check-fill text-success" style={{ fontSize: '4rem' }}></i>
                     </div>
-                    <h3 className="fw-bold">SDS Record Created</h3>
-                    <p className="text-muted">Database entry successful. Linked parent account has been activated for monitoring.</p>
+                    <h3 className="fw-bold">Successful!</h3>
+                    <p className="text-muted">Student And Parent Records Are Added.</p>
                     <Button variant="success" onClick={() => setShowSuccessModal(false)} className="rounded-pill px-5">Done</Button>
                 </Modal.Body>
             </Modal>
@@ -580,4 +417,4 @@ const ManageStudents = () => {
     );
 };
 
-export default ManageStudents;
+export default ManageStudents;    
