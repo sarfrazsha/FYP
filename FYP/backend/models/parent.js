@@ -3,16 +3,16 @@ const schema = mongoose.Schema;
 
 const Parent = new schema(
     {
-        studentId: {
+        studentIds: [{
             type: mongoose.Schema.Types.ObjectId,
             ref:'student'
-        },
+        }],
         parentId: {
             type: String
         },
-        classNo: {
-            type: String // To associate a parent's student with a specific class
-        },
+        classNos: [{
+            type: String 
+        }],
         parentName: {
             type: String,
             required: true

@@ -14,20 +14,22 @@ const MyFees = () => {
     }
 
     const [fees, setFees] = useState([]);
+    const [allFees, setAllFees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Payment Modal State
+    
     const [showPayModal, setShowPayModal] = useState(false);
-    // Upload Receipt Modal State
+    
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [selectedFee, setSelectedFee] = useState(null);
     const [uploadReceiptFile, setUploadReceiptFile] = useState(null);
     const [uploadingReceipt, setUploadingReceipt] = useState(false);
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
     const downloadFile = async (filename) => {
         try {
-            const response = await fetch(`http://localhost:8080/uploads/${filename}`);
+            const response = await fetch(`/uploads/${filename}`);
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -46,8 +48,8 @@ const MyFees = () => {
     const fetchFees = async () => {
         try {
             setLoading(true);
-            const res = await Axios.get(`http://localhost:8080/api/fees?role=parent&email=${email}`);
-            setFees(res.data);
+            const res = await Axios.get(`/api/fees?role=parent&email=${email}`);
+            setAllFees(res.data);
             setLoading(false);
         } catch (err) {
             console.error("Failed to fetch fees", err);
@@ -59,6 +61,26 @@ const MyFees = () => {
     useEffect(() => {
         fetchFees();
     }, []);
+
+    useEffect(() => {
+        if (role?.toLowerCase() === 'parent') {
+            const selectedChildId = localStorage.getItem('selectedChildId');
+            const storedChildren = localStorage.getItem('parentChildren');
+            if (selectedChildId && storedChildren) {
+                try {
+                    const parsed = JSON.parse(storedChildren);
+                    const selectedChild = parsed.find(c => c.id === selectedChildId);
+                    if (selectedChild) {
+                        setFees(allFees.filter(f => f.studentName === selectedChild.name));
+                        return;
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        }
+        setFees(allFees);
+    }, [allFees, role]);
 
     const handlePayClick = (fee) => {
         setSelectedFee(fee);
@@ -75,12 +97,17 @@ const MyFees = () => {
         e.preventDefault();
         if (!uploadReceiptFile) return;
 
+        if (uploadReceiptFile.size > MAX_FILE_SIZE) {
+            setError('System supports only up to 10 MB for uploads.');
+            return;
+        }
+
         setUploadingReceipt(true);
         try {
             const data = new FormData();
             data.append("parentReceipt", uploadReceiptFile);
             
-            await Axios.put(`http://localhost:8080/api/fees/${selectedFee._id}/upload-receipt`, data);
+            await Axios.put(`/api/fees/${selectedFee._id}/upload-receipt`, data);
             
             setShowUploadModal(false);
             setUploadReceiptFile(null);
@@ -220,7 +247,7 @@ const MyFees = () => {
                 )}
             </Container>
 
-            {/* Upload Receipt Modal */}
+           
             <Modal show={showUploadModal} onHide={() => !uploadingReceipt && setShowUploadModal(false)} centered backdrop="static">
                 <Modal.Header closeButton={!uploadingReceipt} className="border-0 pb-0">
                     <Modal.Title className="fw-bold">Upload Bank Receipt</Modal.Title>
@@ -240,10 +267,18 @@ const MyFees = () => {
                                 onChange={(e) => {
                                     const file = e.target.files[0];
                                     if (file) {
+                                        if (file.size > MAX_FILE_SIZE) {
+                                            setError('System supports only up to 10 MB for uploads.');
+                                            setUploadReceiptFile(null);
+                                            e.target.value = '';
+                                            return;
+                                        }
+                                        setError(null);
                                         setUploadReceiptFile(file);
                                     }
                                 }}
                             />
+                            <Form.Text className="text-muted small">Accepted: images or PDF. Maximum size 10 MB.</Form.Text>
                         </Form.Group>
                         <Button type="submit" variant="primary" className="w-100 rounded-pill fw-bold py-2 mt-2" disabled={uploadingReceipt || !uploadReceiptFile}>
                             {uploadingReceipt ? <Spinner size="sm" className="me-2" /> : <i className="bi bi-check2-circle me-2"></i>}
@@ -253,7 +288,7 @@ const MyFees = () => {
                 </Modal.Body>
             </Modal>
 
-            {/* Payment Verification Modal */}
+           
             <Modal show={showPayModal} onHide={() => setShowPayModal(false)} centered backdrop="static">
                 <Modal.Header closeButton className="border-0 pb-0">
                     <Modal.Title className="fw-bold">Pay With Cashmaal</Modal.Title>

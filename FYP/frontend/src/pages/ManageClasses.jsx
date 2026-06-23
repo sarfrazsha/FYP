@@ -1,202 +1,206 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Table, Button, Modal, Form, Card, Badge, Row, Col } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Axios from 'axios';
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 const ManageClasses = () => {
     const navigate = useNavigate();
-    // --- MOCK DATA ---
-    const initialClasses = [
-        { id: 1, name: 'Class 1', section: 'A', teacher: 'Respected Naeem Akhter', teacherEmail: 'naeem@gmail.com' },
-        { id: 2, name: 'Class 2', section: 'A', teacher: 'Respected Saleem Akhter', teacherEmail: 'saleem@gmail.com' },
-        { id: 3, name: 'Class 3', section: 'A', teacher: 'Respected Qari Illyas Shb', teacherEmail: 'illyas@gmail.com' },
-        { id: 4, name: 'Class 4', section: 'A', teacher: 'Respected Naeem Akhter', teacherEmail: 'naeem@gmail.com' },
-        { id: 5, name: 'Class 5', section: 'A', teacher: 'Respected Saleem Akhter', teacherEmail: 'saleem@gmail.com' }
-    ];
+    const location = useLocation();
+    const classFilter = location.state?.classFilter;
+   
+    const [classes, setClasses] = useState([]);
+    const [unassignedTeachers, setUnassignedTeachers] = useState([]);
 
-    const initialStudents = [
-        {
-            id: '1',
-            studentName: 'Abdul Basit',
-            studentAge: '14',
-            studentRollNo: '2024-001',
-            studentGender: 'Male',
-            studentClass: 'Class 1',
-            studentEmail: 'abdul@gmail.com',
-            studentPassword: 'password123',
-            studentProfilePicture: '',
-            parentName: 'Khalid Mehmood',
-            parentPhone: '03245627336',
-            parentEmail: 'khalid@gmail.com',
-            parentAddress: 'House 14, Street 3, Mohalla Qadirabad, Multan'
-        },
-        {
-            id: '2',
-            studentName: 'M Muntaha',
-            studentAge: '13',
-            studentRollNo: '2024-002',
-            studentGender: 'Male',
-            studentClass: 'Class 1',
-            studentEmail: 'muntaha@gmail.com',
-            studentProfilePicture: '',
-            parentName: 'Tariq Hussain',
-            parentPhone: '03017894523',
-            parentEmail: 'tariq@gmail.com',
-            parentAddress: 'Gali Masjid Wali, Bahawalpur'
-        },
-        {
-            id: '3',
-            studentName: 'M Sharafat',
-            studentAge: '15',
-            studentRollNo: '2024-003',
-            studentGender: 'Male',
-            studentClass: 'Class 2',
-            studentEmail: 'sharafat@gmail.com',
-            studentProfilePicture: '',
-            parentName: 'Nawaz Ahmed',
-            parentPhone: '03129876543',
-            parentEmail: 'nawaz@gmail.com',
-            parentAddress: 'Mohalla Ahmedpur, Near Jamia Masjid, Rahim Yar Khan'
-        },
-        {
-            id: '4',
-            studentName: 'M Qasim',
-            studentAge: '12',
-            studentRollNo: '2024-004',
-            studentGender: 'Male',
-            studentClass: 'Class 2',
-            studentEmail: 'qasim@gmail.com',
-            studentProfilePicture: '',
-            parentName: 'Aslam Shah',
-            parentPhone: '03001234567',
-            parentEmail: 'aslam@gmail.com',
-            parentAddress: 'House 22, Gulshan Colony, Lahore'
-        },
-        {
-            id: '5',
-            studentName: 'Hamza Ali',
-            studentAge: '11',
-            studentRollNo: '2024-005',
-            studentGender: 'Male',
-            studentClass: 'Class 3',
-            studentEmail: 'hamza@gmail.com',
-            studentProfilePicture: '',
-            parentName: 'Imran Ali',
-            parentPhone: '03451237890',
-            parentEmail: 'imran@gmail.com',
-            parentAddress: 'House 5, Mohalla Farooqabad, Faisalabad'
-        },
-        {
-            id: '6',
-            studentName: 'Bilal Ahmed',
-            studentAge: '10',
-            studentRollNo: '2024-006',
-            studentGender: 'Male',
-            studentClass: 'Class 4',
-            studentEmail: 'bilal@gmail.com',
-            studentProfilePicture: '',
-            parentName: 'Rashid Ahmed',
-            parentPhone: '03331234567',
-            parentEmail: 'rashid@gmail.com',
-            parentAddress: 'House 9, Street 7, Satellite Town, Rawalpindi'
-        },
-        {
-            id: '7',
-            studentName: 'Usman Ghani',
-            studentAge: '12',
-            studentRollNo: '2024-007',
-            studentGender: 'Male',
-            studentClass: 'Class 5',
-            studentEmail: 'usman@gmail.com',
-            studentProfilePicture: '',
-            parentName: 'Ghani Sahab',
-            parentPhone: '03009871234',
-            parentEmail: 'ghani@gmail.com',
-            parentAddress: 'Mohalla Islamabad, Near Government School, Sahiwal'
-        }
-    ];
 
-    // --- STATE MANAGEMENT ---
-    const [classes, setClasses] = useState(initialClasses);
-
-    // Merge hardcoded students with database students
-    const [allStudents, setAllStudents] = useState([...initialStudents]);
+    const [allStudents, setAllStudents] = useState([]);
+    const [loading, setLoading] = useState(false);
 
     const fetchAllStudents = async () => {
+        setLoading(true);
         try {
-            const response = await Axios.get('http://localhost:8080/api/students-detailed');
-            // Merge: mock data + database data
-            setAllStudents([...initialStudents, ...response.data]);
+            const response = await Axios.get('/api/students-detailed');
+            setAllStudents(response.data);
         } catch (err) {
             console.error("Fetch error in classes:", err);
-            setAllStudents(initialStudents);
+            setAllStudents([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchClasses = async () => {
+        try {
+            const response = await Axios.get('/api/classes');
+            setClasses(response.data);
+        } catch (err) {
+            console.error("Error fetching classes:", err);
+        }
+    };
+
+    const fetchUnassignedTeachers = async () => {
+        try {
+            const response = await Axios.get('/api/teachers/unassigned');
+            setUnassignedTeachers(response.data);
+        } catch (err) {
+            console.error("Error fetching unassigned teachers:", err);
         }
     };
 
     useEffect(() => {
+        const handleFocus = () => {
+            fetchAllStudents();
+            fetchClasses();
+            fetchUnassignedTeachers();
+        };
+
         fetchAllStudents();
-        window.addEventListener('focus', fetchAllStudents);
-        return () => window.removeEventListener('focus', fetchAllStudents);
+        fetchClasses();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
     }, []);
 
-    // CRUD State
+
+    
+    useEffect(() => {
+        if (classFilter) {
+            const matched = classes.find(c => c.name === classFilter);
+            if (matched) setSelectedClass(matched);
+        }
+    }, [classFilter]);
+
+   
     const [show, setShow] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentClass, setCurrentClass] = useState({ id: null, name: '', section: '', teacher: '', teacherEmail: '' });
 
-    // Drill-Down State
-    const [selectedClass, setSelectedClass] = useState(null); // null means show Overview, otherwise show Detail View
+  
+    const [selectedClass, setSelectedClass] = useState(null); 
 
-    // Student Modal State
+    
     const [showStudentModal, setShowStudentModal] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [isEditingStudent, setIsEditingStudent] = useState(false);
     const [editingStudentData, setEditingStudentData] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const studentImageRef = React.useRef(null);
 
-    const handleSaveStudent = () => {
-        setAllStudents(allStudents.map(s => s.id === editingStudentData.id ? editingStudentData : s));
-        setSelectedStudent(editingStudentData);
-        setIsEditingStudent(false);
+    const handleUpdateStudentPic = async (e) => {
+        const file = e.target.files[0];
+        if (!file || !selectedStudent) return;
+
+        if (file.size > MAX_FILE_SIZE) {
+            alert('System supports only up to 10 MB for uploads.');
+            e.target.value = '';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('profilePic', file);
+        formData.append('email', selectedStudent.studentEmail);
+        formData.append('role', 'student');
+
+        try {
+            const res = await Axios.post('/api/user/profile-picture', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const newPicUrl = `/uploads/images/${res.data.profilePic}`;
+            
+            // Update the lists and selection
+            const updatedStudent = { ...selectedStudent, studentProfilePicture: newPicUrl };
+            setAllStudents(allStudents.map(s => s.id === selectedStudent.id ? updatedStudent : s));
+            setSelectedStudent(updatedStudent);
+            
+            alert("Student picture updated successfully!");
+        } catch (err) {
+            console.error("Error updating student pic:", err);
+            alert("Failed to update student picture.");
+        }
     };
 
+    const handleSaveStudent = async () => {
+        try {
+            await Axios.put(`/api/students/${editingStudentData.id}`, editingStudentData);
+            
+            // Update local state after successful save
+            setAllStudents(allStudents.map(s => s.id === editingStudentData.id ? editingStudentData : s));
+            setSelectedStudent(editingStudentData);
+            setIsEditingStudent(false);
+            alert("Student details updated successfully!");
+        } catch (err) {
+            console.error("Error saving student:", err);
+            alert(err.response?.data?.message || "Failed to save student details.");
+        }
+    };
 
-    // --- CRUD HANDLERS ---
+    const handleDeleteStudent = async () => {
+        if (!selectedStudent) return;
+        if (!window.confirm("Are you sure you want to delete this student and their linked parent account?")) return;
+
+        try {
+            await Axios.delete(`/api/students/${selectedStudent.id}`);
+            await fetchAllStudents();
+            setShowStudentModal(false);
+            setSelectedStudent(null);
+            alert("Student and linked parent deleted successfully.");
+        } catch (err) {
+            console.error("Error deleting student:", err);
+            alert(err.response?.data?.message || "Failed to delete student.");
+        }
+    };
+
     const handleShowAdd = () => {
         setIsEditing(false);
         setCurrentClass({ id: null, name: '', section: '', teacher: '', teacherEmail: '' });
+        fetchUnassignedTeachers();
         setShow(true);
     };
+
 
     const handleShowEdit = (cls) => {
         setIsEditing(true);
         setCurrentClass(cls);
+        fetchUnassignedTeachers();
         setShow(true);
     };
 
+
     const handleClose = () => setShow(false);
 
-    const handleSave = () => {
-        if (isEditing) {
-            setClasses(classes.map(c => c.id === currentClass.id ? currentClass : c));
-            if (selectedClass && selectedClass.id === currentClass.id) {
-                setSelectedClass(currentClass); // Update detail view if open
+    const handleSave = async () => {
+        try {
+            if (isEditing) {
+                await Axios.put(`/api/classes/${currentClass.id}`, currentClass);
+            } else {
+                await Axios.post('/api/classes', currentClass);
             }
-        } else {
-            const newEntry = { ...currentClass, id: Date.now() };
-            setClasses([...classes, newEntry]);
+            fetchClasses();
+            handleClose();
+        } catch (err) {
+            console.error("Error saving class:", err);
+            alert("Failed to save class. Please ensure all fields are filled.");
         }
-        handleClose();
     };
 
-    const handleDelete = (id) => {
+
+    const handleDelete = async (id) => {
         if (window.confirm("Are you sure you want to delete this class?")) {
-            setClasses(classes.filter(c => c.id !== id));
+            try {
+                await Axios.delete(`/api/classes/${id}`);
+                fetchClasses();
+                if (selectedClass && selectedClass.id === id) {
+                    setSelectedClass(null);
+                }
+            } catch (err) {
+                console.error("Error deleting class:", err);
+                alert("Failed to delete class.");
+            }
         }
     };
 
-    // --- VIEW RENDERERS ---
+
 
     const renderOverview = () => (
         <>
@@ -212,7 +216,7 @@ const ManageClasses = () => {
                     </Button>
                     <div>
                         <h2 className="fw-bold mb-0">Manage Classes</h2>
-                        <p className="text-muted small mb-0">Create, edit, or remove school sections</p>
+                        <p className="text-muted small mb-0">Create, edit, or remove Class sections</p>
                     </div>
                 </div>
                 <Button variant="primary" className="rounded-pill px-4 shadow-sm" onClick={handleShowAdd}>
@@ -280,13 +284,17 @@ const ManageClasses = () => {
     );
 
     const renderClassDetail = () => {
-        // Filter students belonging to this class and apply search
+       
         const enrolledStudents = allStudents.filter(s => {
-            const matchesClass = s.studentClass === selectedClass.name;
+            const matchesClass = s.studentClass === `${selectedClass.name} - ${selectedClass.section}` || s.studentClass === selectedClass.name;
             const matchesSearch = !searchTerm || 
                 s.studentName.toLowerCase().includes(searchTerm.toLowerCase()) || 
                 (s.studentRollNo && s.studentRollNo.toString().toLowerCase().includes(searchTerm.toLowerCase()));
             return matchesClass && matchesSearch;
+        }).sort((a, b) => {
+            const aNum = parseInt(a.studentRollNo?.split('-')[0] || '0');
+            const bNum = parseInt(b.studentRollNo?.split('-')[0] || '0');
+            return aNum - bNum;
         });
 
         return (
@@ -303,7 +311,7 @@ const ManageClasses = () => {
                             </div>
                             <p className="text-muted mt-2 mb-0 fs-6">
                                 <i className="bi bi-person-workspace me-2 text-info"></i>
-                                Teacher in Charge: <strong className="text-dark">{selectedClass.teacher}</strong> ({selectedClass.teacherEmail})
+                                Teacher in Charge: <strong className="text-dark">{selectedClass.teacher}</strong>
                             </p>
                         </div>
                     </div>
@@ -410,7 +418,7 @@ const ManageClasses = () => {
 
                 {selectedClass ? renderClassDetail() : renderOverview()}
 
-                {/* --- CRUD MODAL (For Add/Edit Class) --- */}
+                
                 <Modal show={show} onHide={handleClose} centered backdrop="static">
                     <Modal.Header closeButton className="border-0 pb-0">
                         <Modal.Title className="fw-bold text-dark h4">
@@ -421,13 +429,16 @@ const ManageClasses = () => {
                         <Form>
                             <Form.Group className="mb-4">
                                 <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Class Name</Form.Label>
-                                <Form.Control
-                                    type="text"
-                                    className="p-3 bg-light border-0 rounded-3"
+                                <Form.Select
+                                    className="p-3 bg-light border-0 rounded-3 shadow-none"
                                     value={currentClass.name}
-                                    placeholder="e.g. Grade 10"
                                     onChange={(e) => setCurrentClass({ ...currentClass, name: e.target.value })}
-                                />
+                                >
+                                    <option value="">Select Class...</option>
+                                    {[1, 2, 3, 4, 5].map(n => (
+                                        <option key={n} value={n}>{n}</option>
+                                    ))}
+                                </Form.Select>
                             </Form.Group>
                             <Form.Group className="mb-4">
                                 <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Section</Form.Label>
@@ -439,32 +450,42 @@ const ManageClasses = () => {
                                     onChange={(e) => setCurrentClass({ ...currentClass, section: e.target.value })}
                                 />
                             </Form.Group>
-                            <Row>
-                                <Col md={6}>
-                                    <Form.Group className="mb-4">
-                                        <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Primary Teacher</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            className="p-3 bg-light border-0 rounded-3"
-                                            value={currentClass.teacher}
-                                            placeholder="e.g. Respected Naeem Akhter"
-                                            onChange={(e) => setCurrentClass({ ...currentClass, teacher: e.target.value })}
-                                        />
-                                    </Form.Group>
-                                </Col>
-                                <Col md={6}>
-                                    <Form.Group className="mb-4">
-                                        <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Teacher Email</Form.Label>
-                                        <Form.Control
-                                            type="email"
-                                            className="p-3 bg-light border-0 rounded-3"
-                                            value={currentClass.teacherEmail}
-                                            placeholder="teacher@gmail.com"
-                                            onChange={(e) => setCurrentClass({ ...currentClass, teacherEmail: e.target.value })}
-                                        />
-                                    </Form.Group>
-                                </Col>
-                            </Row>
+                            <Form.Group className="mb-4">
+                                <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Assign Teacher</Form.Label>
+                                <Form.Select
+                                    className="p-3 bg-light border-0 rounded-3 shadow-none"
+                                    value={currentClass.teacherEmail}
+                                    onChange={(e) => {
+                                        const email = e.target.value;
+                                        const teacher = [...unassignedTeachers, { teacherName: currentClass.teacher, teacherEmail: currentClass.teacherEmail }].find(t => t.teacherEmail === email);
+                                        if (teacher) {
+                                            setCurrentClass({ 
+                                                ...currentClass, 
+                                                teacher: teacher.teacherName, 
+                                                teacherEmail: teacher.teacherEmail 
+                                            });
+                                        } else {
+                                            setCurrentClass({ ...currentClass, teacher: '', teacherEmail: '' });
+                                        }
+                                    }}
+                                >
+                                    <option value="">Select Teacher...</option>
+                                    {isEditing && currentClass.teacher && (
+                                        <option value={currentClass.teacherEmail}>{currentClass.teacher} (Current)</option>
+                                    )}
+                                    {unassignedTeachers.map(t => (
+                                        <option key={t.teacherEmail} value={t.teacherEmail}>
+                                            {t.teacherName} ({t.teacherEmail})
+                                        </option>
+                                    ))}
+                                </Form.Select>
+                                {unassignedTeachers.length === 0 && !isEditing && (
+                                    <Form.Text className="text-danger mt-2 d-block">
+                                        No unassigned teachers available.
+                                    </Form.Text>
+                                )}
+                            </Form.Group>
+
                         </Form>
                     </Modal.Body>
                     <Modal.Footer className="border-0 pt-0">
@@ -475,27 +496,46 @@ const ManageClasses = () => {
                     </Modal.Footer>
                 </Modal>
 
-                {/* --- STUDENT PROFILE MODAL --- */}
+               
                 {selectedStudent && (
                     <Modal show={showStudentModal} onHide={() => setShowStudentModal(false)} size="lg" centered>
                         <Modal.Header closeButton className="border-0 pb-0 bg-light rounded-top-4">
                         </Modal.Header>
                         <Modal.Body className="p-0 bg-light rounded-bottom-4">
 
-                            {/* Header Banner */}
                             <div className="bg-primary bg-gradient p-5 position-relative text-center text-md-start d-flex flex-column flex-md-row align-items-center gap-4">
-                                {selectedStudent.studentProfilePicture ? (
-                                    <img
-                                        src={selectedStudent.studentProfilePicture}
-                                        alt="Profile"
-                                        className="rounded-circle border border-4 border-white shadow-lg"
-                                        style={{ width: '120px', height: '120px', objectFit: 'cover', marginTop: '-10px' }}
-                                    />
-                                ) : (
-                                    <div className="bg-white text-primary rounded-circle border border-4 border-white shadow-lg d-flex justify-content-center align-items-center fw-bold" style={{ width: '120px', height: '120px', fontSize: '3rem', marginTop: '-10px' }}>
-                                        {selectedStudent.studentName.charAt(0)}
+                                <div 
+                                    className="position-relative" 
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => studentImageRef.current?.click()}
+                                    title="Click to update student photo"
+                                >
+                                    {selectedStudent.studentProfilePicture ? (
+                                        <img
+                                            src={selectedStudent.studentProfilePicture}
+                                            alt="Profile"
+                                            className="rounded-circle border border-4 border-white shadow-lg"
+                                            style={{ width: '120px', height: '120px', objectFit: 'cover', marginTop: '-10px' }}
+                                        />
+                                    ) : (
+                                        <div className="bg-white text-primary rounded-circle border border-4 border-white shadow-lg d-flex justify-content-center align-items-center fw-bold" style={{ width: '120px', height: '120px', fontSize: '3rem', marginTop: '-10px' }}>
+                                            {selectedStudent.studentName.charAt(0)}
+                                        </div>
+                                    )}
+                                    <div 
+                                        className="bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                                        style={{ position: 'absolute', bottom: '5px', right: '5px', width: '32px', height: '32px', border: '2px solid #fff' }}
+                                    >
+                                        <i className="bi bi-camera-fill text-primary"></i>
                                     </div>
-                                )}
+                                    <input 
+                                        type="file" 
+                                        ref={studentImageRef} 
+                                        style={{ display: 'none' }} 
+                                        accept="image/*"
+                                        onChange={handleUpdateStudentPic}
+                                    />
+                                </div>
                                 <div className="text-white">
                                     <h2 className="fw-bold mb-1">{selectedStudent.studentName}</h2>
                                     <div className="d-flex flex-wrap justify-content-center justify-content-md-start gap-2 mb-2">
@@ -512,7 +552,7 @@ const ManageClasses = () => {
                                 </div>
                             </div>
 
-                            {/* Details Container */}
+                          
                             <div className="p-4 p-md-5 bg-white rounded-top-4" style={{ marginTop: '-20px', position: 'relative', zIndex: 2 }}>
                                 {isEditingStudent ? (
                                     <Form>
@@ -531,14 +571,15 @@ const ManageClasses = () => {
                                             </Col>
                                             <Col md={6}>
                                                 <Form.Group>
-                                                    <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Password</Form.Label>
-                                                    <Form.Control type="text" className="p-2 bg-light border-0 rounded-3" value={editingStudentData.studentPassword || ''} onChange={(e) => setEditingStudentData({ ...editingStudentData, studentPassword: e.target.value })} />
+                                                    <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Update Password</Form.Label>
+                                                    <Form.Control type="text" minLength="8" className="p-2 bg-light border-0 rounded-3" value={editingStudentData.studentPassword || ''} onChange={(e) => setEditingStudentData({ ...editingStudentData, studentPassword: e.target.value })} />
+                                                    <Form.Text className="text-muted" style={{ fontSize: '10px' }}>Minimum 8 characters</Form.Text>
                                                 </Form.Group>
                                             </Col>
                                             <Col md={4}>
                                                 <Form.Group>
-                                                    <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Roll No.</Form.Label>
-                                                    <Form.Control type="text" className="p-2 bg-light border-0 rounded-3" value={editingStudentData.studentRollNo} onChange={(e) => setEditingStudentData({ ...editingStudentData, studentRollNo: e.target.value })} />
+                                                    <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Roll No. <span className="text-muted text-lowercase" style={{fontSize: '10px'}}>(Read Only)</span></Form.Label>
+                                                    <Form.Control type="text" className="p-2 bg-light border-0 rounded-3 text-muted" value={editingStudentData.studentRollNo} readOnly disabled />
                                                 </Form.Group>
                                             </Col>
                                             <Col md={4}>
@@ -565,6 +606,19 @@ const ManageClasses = () => {
                                                     <Form.Control type="text" className="p-2 bg-light border-0 rounded-3" value={editingStudentData.parentPhone} onChange={(e) => setEditingStudentData({ ...editingStudentData, parentPhone: e.target.value })} />
                                                 </Form.Group>
                                             </Col>
+                                            <Col md={6}>
+                                                <Form.Group>
+                                                    <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Parent Email</Form.Label>
+                                                    <Form.Control type="email" className="p-2 bg-light border-0 rounded-3" value={editingStudentData.parentEmail || ''} onChange={(e) => setEditingStudentData({ ...editingStudentData, parentEmail: e.target.value })} />
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={6}>
+                                                <Form.Group>
+                                                    <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Parent Password</Form.Label>
+                                                    <Form.Control type="text" minLength="8" className="p-2 bg-light border-0 rounded-3" value={editingStudentData.parentPassword || ''} onChange={(e) => setEditingStudentData({ ...editingStudentData, parentPassword: e.target.value })} />
+                                                    <Form.Text className="text-muted" style={{ fontSize: '10px' }}>Minimum 8 characters</Form.Text>
+                                                </Form.Group>
+                                            </Col>
                                             <Col md={12}>
                                                 <Form.Group>
                                                     <Form.Label className="small fw-bold text-secondary text-uppercase ls-1">Parent Address</Form.Label>
@@ -575,7 +629,7 @@ const ManageClasses = () => {
                                     </Form>
                                 ) : (
                                     <Row className="g-5">
-                                        {/* Personal Info */}
+                                     {/* Personal Info */}
                                         <Col md={6}>
                                             <h6 className="text-primary fw-bold text-uppercase ls-1 mb-4 d-flex align-items-center">
                                                 <i className="bi bi-person-badge-fill me-2 fs-5"></i>
@@ -604,7 +658,7 @@ const ManageClasses = () => {
                                             </div>
                                         </Col>
 
-                                        {/* Parent Info */}
+                                        
                                         <Col md={6}>
                                             <h6 className="text-success fw-bold text-uppercase ls-1 mb-4 d-flex align-items-center">
                                                 <i className="bi bi-house-heart-fill me-2 fs-5"></i>
@@ -635,10 +689,13 @@ const ManageClasses = () => {
                                     </Row>
                                 )}
 
-                                {/* Action Buttons */}
+                               
                                 <div className="mt-5 d-flex justify-content-end gap-3 pt-3 border-top">
                                     {!isEditingStudent ? (
                                         <>
+                                            <Button variant="danger" className="rounded-pill px-4 fw-bold" onClick={handleDeleteStudent}>
+                                                <i className="bi bi-trash3 me-2"></i>Delete Student
+                                            </Button>
                                             <Button variant="outline-primary" className="rounded-pill px-4 fw-bold" onClick={() => {
                                                 setEditingStudentData(selectedStudent);
                                                 setIsEditingStudent(true);

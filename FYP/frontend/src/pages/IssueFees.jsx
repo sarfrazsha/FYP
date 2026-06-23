@@ -18,6 +18,7 @@ const IssueFees = () => {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [successMsg, setSuccessMsg] = useState('');
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
     const [formData, setFormData] = useState({
         classNo: '',
@@ -26,13 +27,14 @@ const IssueFees = () => {
         amount: '',
         dueDate: '',
         month: '',
+        year: new Date().getFullYear(),
         adminVoucher: null
     });
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const res = await Axios.get('http://localhost:8080/api/parents');
+            const res = await Axios.get('/api/parents');
             setParents(res.data);
             setLoading(false);
         } catch (err) {
@@ -58,6 +60,10 @@ const IssueFees = () => {
         setSuccessMsg('');
 
         try {
+            if (formData.adminVoucher && formData.adminVoucher.size > MAX_FILE_SIZE) {
+                throw new Error('System supports only up to 10 MB for uploads.');
+            }
+
             const data = new FormData();
             data.append("classNo", formData.classNo);
             data.append("studentName", formData.studentName);
@@ -65,6 +71,7 @@ const IssueFees = () => {
             data.append("amount", formData.amount);
             data.append("dueDate", formData.dueDate);
             data.append("month", formData.month);
+            data.append("year", formData.year);
             data.append("role", 'admin');
 
             if (formData.adminVoucher) {
@@ -76,16 +83,16 @@ const IssueFees = () => {
                 if (parentsInClass.length === 0) {
                     throw new Error("No parent records found for this class.");
                 }
-                // Append parents as a stringified JSON for the backend to parse
+                
                 data.append("parents", JSON.stringify(parentsInClass));
-                await Axios.post('http://localhost:8080/api/fees/bulk', data);
+                await Axios.post('/api/fees/bulk', data);
                 setSuccessMsg(`Fee alerts sent successfully to all ${parentsInClass.length} students!`);
             } else {
-                await Axios.post('http://localhost:8080/api/fees', data);
+                await Axios.post('/api/fees', data);
                 setSuccessMsg("Fee alert sent successfully!");
             }
 
-            setFormData({ classNo: '', studentName: '', parentEmail: '', amount: '', dueDate: '', month: '', adminVoucher: null });
+            setFormData({ classNo: '', studentName: '', parentEmail: '', amount: '', dueDate: '', month: '', year: new Date().getFullYear(), adminVoucher: null });
             document.getElementById('fee-voucher-upload').value = '';
         } catch (err) {
             setError(err.response?.data?.message || err.message || "Failed to send fee alert.");
@@ -139,33 +146,44 @@ const IssueFees = () => {
                                 ) : (
                                     <Form onSubmit={handleSubmit}>
                                         <Row className="g-3">
-                                            <Col md={6}>
-                                                <Form.Group className="mb-3">
-                                                    <Form.Label className="small fw-bold text-secondary">Class No</Form.Label>
-                                                    <Form.Select
-                                                        name="classNo"
-                                                        value={formData.classNo}
-                                                        onChange={(e) => {
-                                                            setFormData({ ...formData, classNo: e.target.value, parentEmail: '' });
-                                                        }}
-                                                    >
-                                                        <option value="">All Classes</option>
-                                                        {classesList.map(c => (
-                                                            <option key={c} value={c}>{c}</option>
-                                                        ))}
-                                                    </Form.Select>
-                                                </Form.Group>
-                                            </Col>
-                                            <Col md={6}>
-                                                <Form.Group className="mb-3">
-                                                    <Form.Label className="small fw-bold text-secondary">Fee Month</Form.Label>
-                                                    <Form.Select required name="month" value={formData.month} onChange={handleChange}>
-                                                        <option value="">Select Month</option>
-                                                        {months.map(m => <option key={m} value={m}>{m}</option>)}
-                                                    </Form.Select>
-                                                </Form.Group>
-                                            </Col>
-                                        </Row>
+                    <Col md={4}>
+                        <Form.Group className="mb-3">
+                            <Form.Label className="small fw-bold text-secondary">Class No</Form.Label>
+                            <Form.Select
+                                name="classNo"
+                                value={formData.classNo}
+                                onChange={(e) => {
+                                    setFormData({ ...formData, classNo: e.target.value, parentEmail: '' });
+                                }}
+                            >
+                                <option value="">All Classes</option>
+                                {classesList.map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </Form.Select>
+                        </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                        <Form.Group className="mb-3">
+                            <Form.Label className="small fw-bold text-secondary">Fee Month</Form.Label>
+                            <Form.Select required name="month" value={formData.month} onChange={handleChange}>
+                                <option value="">Select Month</option>
+                                {months.map(m => <option key={m} value={m}>{m}</option>)}
+                            </Form.Select>
+                        </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                        <Form.Group className="mb-3">
+                            <Form.Label className="small fw-bold text-secondary">Fee Year</Form.Label>
+                            <Form.Select required name="year" value={formData.year} onChange={handleChange}>
+                                <option value="">Select Year</option>
+                                {[new Date().getFullYear(), new Date().getFullYear() + 1].map(y => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </Form.Select>
+                        </Form.Group>
+                    </Col>
+                </Row>
 
                                         <Form.Group className="mb-3">
                                             <Form.Label className="small fw-bold text-secondary">Select Parent / Guardian</Form.Label>
@@ -188,7 +206,7 @@ const IssueFees = () => {
                                                 name="studentName"
                                                 value={formData.parentEmail === 'ALL' ? 'Bulk Class Members' : formData.studentName}
                                                 onChange={handleChange}
-                                                placeholder="e.g. John Doe"
+                                                placeholder="e.g. Ahmed"
                                             />
                                         </Form.Group>
 
@@ -217,10 +235,18 @@ const IssueFees = () => {
                                                 onChange={(e) => {
                                                     const file = e.target.files[0];
                                                     if (file) {
+                                                        if (file.size > MAX_FILE_SIZE) {
+                                                            setError('System supports only up to 10 MB for uploads.');
+                                                            setFormData({ ...formData, adminVoucher: null });
+                                                            e.target.value = '';
+                                                            return;
+                                                        }
+                                                        setError(null);
                                                         setFormData({ ...formData, adminVoucher: file });
                                                     }
                                                 }}
                                             />
+                                            <Form.Text className="text-muted small">Accepted: images or PDF. Maximum size 10 MB.</Form.Text>
                                         </Form.Group>
 
                                         <div className="mt-4">

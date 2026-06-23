@@ -6,48 +6,36 @@ import Layout from '../components/Layout';
 const Results = () => {
     const navigate = useNavigate();
     const role = localStorage.getItem('userRole')?.toLowerCase();
-    const studentId = localStorage.getItem('studentId');
-    const classNo = localStorage.getItem('classNo');
+    const sid = localStorage.getItem('studentId');
+    const selectedChild = localStorage.getItem('selectedChildId');
+    const studentId = (role === 'parent' && selectedChild) ? selectedChild : sid;
+
+    const cNo = localStorage.getItem('classNo');
+    const selectedChildClass = localStorage.getItem('selectedChildClass');
+    const classNo = (role === 'parent' && selectedChildClass) ? selectedChildClass : cNo;
+    
     const studentName = localStorage.getItem('userName');
 
     if (!role || (role !== 'student' && role !== 'parent')) {
         return <Navigate to="/" replace />;
     }
 
-    const [activeTerm, setActiveTerm] = useState('Mid-Term');
-    const [result, setResult] = useState(null);
+    const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeTerm, setActiveTerm] = useState('');
+    const [result, setResult] = useState(null);
 
-    const getGradeBadge = (total) => {
-        const percentage = (total / 300) * 100;
-        if (percentage >= 80) return { label: 'A+', color: 'success text-white' };
-        if (percentage >= 70) return { label: 'A', color: 'primary' };
-        if (percentage >= 60) return { label: 'B', color: 'info' };
-        if (percentage >= 50) return { label: 'C', color: 'warning text-dark' };
-        if (total === 0) return { label: 'N/A', color: 'secondary' };
-        return { label: 'F', color: 'danger' };
-    };
-
-    const fetchResult = () => {
+    const fetchResults = async () => {
         setLoading(true);
         try {
-            const allResults = JSON.parse(localStorage.getItem('school_academic_results') || '{}');
-            const classResults = allResults[`${classNo}_${activeTerm}`] || {};
+            const res = await fetch(`/api/results/student/${studentId}`);
+            const data = await res.json();
+            setResults(data);
             
-            // Find specific student marks
-            const marks = classResults[studentId];
-            if (marks) {
-                const math = parseInt(marks.math || 0);
-                const science = parseInt(marks.science || 0);
-                const english = parseInt(marks.english || 0);
-                const total = math + science + english;
-                const percentage = ((total / 300) * 100).toFixed(1);
-                
-                setResult({
-                    math, science, english, total, percentage,
-                    grade: getGradeBadge(total),
-                    status: percentage >= 50 ? 'Passed' : 'Failed'
-                });
+            if (data.length > 0) {
+                // Set default tab to the most recently updated result's type
+                setActiveTerm(data[0].examType);
+                setResult(data[0]);
             } else {
                 setResult(null);
             }
@@ -59,15 +47,22 @@ const Results = () => {
     };
 
     useEffect(() => {
-        if (studentId && classNo) {
-            fetchResult();
+        if (studentId) {
+            fetchResults();
         }
-    }, [activeTerm, studentId, classNo]);
+    }, [studentId]);
+
+    useEffect(() => {
+        if (results.length > 0) {
+            const match = results.find(r => r.examType === activeTerm);
+            setResult(match || null);
+        }
+    }, [activeTerm, results]);
 
     return (
         <Layout>
             <Container fluid className="py-4">
-                {/* Header */}
+              
                 <div className="mb-4 d-flex justify-content-between align-items-center">
                     <div className="d-flex align-items-center gap-3">
                         <Button 
@@ -85,19 +80,19 @@ const Results = () => {
                     </div>
                 </div>
 
-                {/* Term Toggle */}
                 <Card className="border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
                     <Card.Body className="p-0">
                         <Nav variant="pills" className="nav-fill bg-light p-2" activeKey={activeTerm} onSelect={(k) => setActiveTerm(k)}>
-                            <Nav.Item>
-                                <Nav.Link eventKey="Mid-Term" className="rounded-pill py-2 fw-bold">Mid-Term Exams</Nav.Link>
-                            </Nav.Item>
-                            <Nav.Item>
-                                <Nav.Link eventKey="Finals" className="rounded-pill py-2 fw-bold">Final Examinations</Nav.Link>
-                            </Nav.Item>
-                            <Nav.Item>
-                                <Nav.Link eventKey="Monthly Test" className="rounded-pill py-2 fw-bold">Monthly Tests</Nav.Link>
-                            </Nav.Item>
+                            {Array.from(new Set(results.map(r => r.examType))).map(type => (
+                                <Nav.Item key={type}>
+                                    <Nav.Link eventKey={type} className="rounded-pill py-2 fw-bold">{type}</Nav.Link>
+                                </Nav.Item>
+                            ))}
+                            {results.length === 0 && (
+                                <Nav.Item>
+                                    <Nav.Link eventKey="Mid-Term" className="rounded-pill py-2 fw-bold" disabled>No Results</Nav.Link>
+                                </Nav.Item>
+                            )}
                         </Nav>
                     </Card.Body>
                 </Card>
@@ -109,7 +104,6 @@ const Results = () => {
                     </div>
                 ) : result ? (
                     <Row className="g-4">
-                        {/* Summary Card */}
                         <Col lg={4}>
                             <Card className="border-0 shadow-sm rounded-4 h-100 bg-primary text-white text-center position-relative overflow-hidden">
                                 <div className="position-absolute top-0 end-0 p-3 opacity-25">
@@ -128,11 +122,11 @@ const Results = () => {
                                         <Row>
                                             <Col xs={6} className="border-end border-white border-opacity-25">
                                                 <div className="small opacity-75">Total Marks</div>
-                                                <div className="h4 fw-bold mb-0">{result.total}/300</div>
+                                                <div className="h4 fw-bold mb-0">{result.grandTotal}/{result.maxTotal}</div>
                                             </Col>
                                             <Col xs={6}>
                                                 <div className="small opacity-75">Percentage</div>
-                                                <div className="h4 fw-bold mb-0">{result.percentage}%</div>
+                                                <div className="h4 fw-bold mb-0">{result.maxTotal > 0 ? ((result.grandTotal / result.maxTotal) * 100).toFixed(1) : 0}%</div>
                                             </Col>
                                         </Row>
                                     </div>
@@ -140,38 +134,48 @@ const Results = () => {
                             </Card>
                         </Col>
 
-                        {/* Subject Breakdown */}
                         <Col lg={8}>
                             <Row className="g-4">
-                                {[
-                                    { name: 'Mathematics', score: result.math, icon: 'bi-calculator', color: 'primary' },
-                                    { name: 'General Science', score: result.science, icon: 'bi-flask', color: 'success' },
-                                    { name: 'English Language', score: result.english, icon: 'bi-translate', color: 'info' }
-                                ].map((subject, idx) => (
-                                    <Col md={12} key={idx}>
-                                        <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
-                                            <Card.Body className="p-4 d-flex align-items-center">
-                                                <div className={`bg-${subject.color} bg-opacity-10 p-3 rounded-4 text-${subject.color} me-4 shadow-sm`}>
-                                                    <i className={`bi ${subject.icon} fs-2`}></i>
-                                                </div>
-                                                <div className="flex-grow-1">
-                                                    <h5 className="fw-bold mb-1 text-dark">{subject.name}</h5>
-                                                    <div className="progress rounded-pill bg-light" style={{ height: '8px' }}>
-                                                        <div 
-                                                            className={`progress-bar bg-${subject.color} rounded-pill shadow-sm`} 
-                                                            role="progressbar" 
-                                                            style={{ width: `${subject.score}%` }}
-                                                        ></div>
+                                {result.subjects.map((subject, idx) => {
+                                    const colors = ['primary', 'success', 'info', 'warning', 'danger', 'dark'];
+                                    const color = colors[idx % colors.length];
+                                    const icons = {
+                                        math: 'bi-calculator',
+                                        science: 'bi-flask',
+                                        english: 'bi-translate',
+                                        urdu: 'bi-book',
+                                        islamiyat: 'bi-moon-stars',
+                                        history: 'bi-bank'
+                                    };
+                                    const icon = icons[subject.subjectId] || 'bi-journal-text';
+                                    const percentage = subject.totalMarks > 0 ? (subject.score / subject.totalMarks) * 100 : 0;
+
+                                    return (
+                                        <Col md={12} key={idx}>
+                                            <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
+                                                <Card.Body className="p-4 d-flex align-items-center">
+                                                    <div className={`bg-${color} bg-opacity-10 p-3 rounded-4 text-${color} me-4 shadow-sm`}>
+                                                        <i className={`bi ${icon} fs-2`}></i>
                                                     </div>
-                                                </div>
-                                                <div className="ms-4 text-end">
-                                                    <div className="h2 fw-bold text-dark mb-0">{subject.score}</div>
-                                                    <div className="small text-muted">Out of 100</div>
-                                                </div>
-                                            </Card.Body>
-                                        </Card>
-                                    </Col>
-                                ))}
+                                                    <div className="flex-grow-1">
+                                                        <h5 className="fw-bold mb-1 text-dark">{subject.name}</h5>
+                                                        <div className="progress rounded-pill bg-light" style={{ height: '8px' }}>
+                                                            <div 
+                                                                className={`progress-bar bg-${color} rounded-pill shadow-sm`} 
+                                                                role="progressbar" 
+                                                                style={{ width: `${percentage}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="ms-4 text-end">
+                                                        <div className="h2 fw-bold text-dark mb-0">{subject.score}</div>
+                                                        <div className="small text-muted">Out of {subject.totalMarks}</div>
+                                                    </div>
+                                                </Card.Body>
+                                            </Card>
+                                        </Col>
+                                    );
+                                })}
                             </Row>
                             
                             <div className="mt-4 p-4 bg-light rounded-4 border border-dashed border-secondary border-opacity-25 text-center">
@@ -186,10 +190,10 @@ const Results = () => {
                     <Card className="border-0 shadow-sm rounded-4">
                         <Card.Body className="p-5 text-center">
                             <i className="bi bi-journal-x text-muted mb-3" style={{ fontSize: '4rem' }}></i>
-                            <h4 className="fw-bold text-dark">Results Not Found</h4>
-                            <p className="text-muted">Academic records for <strong>{activeTerm}</strong> have not been published by your teacher yet.</p>
-                            <Button variant="outline-primary" className="rounded-pill px-4 fw-bold mt-2" onClick={() => setActiveTerm('Mid-Term')}>
-                                Check Mid-Term Results
+                            <h4 className="fw-bold text-dark">Results Not Published</h4>
+                            <p className="text-muted">Academic records for this term have not been published by your teacher yet.</p>
+                            <Button variant="outline-primary" className="rounded-pill px-4 fw-bold mt-2" onClick={() => fetchResults()}>
+                                <i className="bi bi-arrow-clockwise me-2"></i>Refresh Results
                             </Button>
                         </Card.Body>
                     </Card>

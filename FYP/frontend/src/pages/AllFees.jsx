@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Form, Button, Table, Badge, Spinner, Alert, InputGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, Table, Badge, Spinner, Alert, InputGroup, Modal } from 'react-bootstrap';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Axios from 'axios';
@@ -20,29 +20,24 @@ const AllFees = () => {
     const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || '');
     const [filterMonth, setFilterMonth] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [selectedVoucher, setSelectedVoucher] = useState(null);
 
-    const downloadFile = async (filename) => {
-        try {
-            const response = await fetch(`http://localhost:8080/uploads/${filename}`);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', filename.split('/').pop()); 
-            document.body.appendChild(link);
-            link.click();
-            link.parentNode.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error("Download failed:", error);
-            alert("Failed to download file.");
+    const handleViewVoucher = (filename) => {
+        // If it already has /uploads or starts with images/, handle correctly
+        let path = filename;
+        if (!path.startsWith('/') && !path.startsWith('http')) {
+            const prefix = path.startsWith('images/') ? '' : 'images/';
+            path = `/uploads/${prefix}${path}`;
         }
+        setSelectedVoucher(path);
+        setShowViewModal(true);
     };
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const res = await Axios.get(`http://localhost:8080/api/fees?role=admin`);
+            const res = await Axios.get(`/api/fees?role=admin`);
             setFees(res.data);
             setLoading(false);
         } catch (err) {
@@ -72,10 +67,20 @@ const AllFees = () => {
 
     const handleApprove = async (id) => {
         try {
-            await Axios.put(`http://localhost:8080/api/fees/${id}/approve`);
+            await Axios.put(`/api/fees/${id}/approve`);
             fetchData();
         } catch (e) {
             alert("Approval failed!");
+        }
+    };
+
+    const handleReject = async (id) => {
+        if (!window.confirm("Are you sure you want to reject this payment voucher? The student will be notified to re-upload.")) return;
+        try {
+            await Axios.put(`/api/fees/${id}/reject`);
+            fetchData();
+        } catch (e) {
+            alert("Rejection failed!");
         }
     };
 
@@ -99,7 +104,7 @@ const AllFees = () => {
 
                 {error && <Alert variant="danger" dismissible onClose={() => setError(null)}>{error}</Alert>}
 
-                {/* Filters Section */}
+               
                 <Card className="border-0 shadow-sm rounded-4 mb-4">
                     <Card.Body className="p-3 p-md-4">
                         <Row className="g-3 align-items-end">
@@ -140,7 +145,7 @@ const AllFees = () => {
                     </Card.Body>
                 </Card>
 
-                {/* Table Section */}
+              
                 <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
                     <Card.Body className="p-0">
                         <div className="table-responsive">
@@ -153,6 +158,7 @@ const AllFees = () => {
                                         <th>Due Date</th>
                                         <th className="text-center">Status</th>
                                         <th className="text-center">Actions</th>
+                                     
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -181,18 +187,19 @@ const AllFees = () => {
                                                     {f.status === 'Review' && (
                                                         <>
                                                             {f.parentReceipt && (
-                                                                <Button size="sm" variant="outline-primary" className="rounded-pill p-1 px-2" onClick={() => downloadFile(f.parentReceipt)} title="Download Receipt">
-                                                                    <i className="bi bi-download"></i>
+                                                                <Button size="sm" variant="outline-primary" className="rounded-pill p-1 px-2" onClick={() => handleViewVoucher(f.parentReceipt)} title="View Voucher">
+                                                                    <i className="bi bi-eye-fill"></i>
                                                                 </Button>
                                                             )}
                                                             <Button size="sm" variant="success" className="rounded-pill p-1 px-2" onClick={() => handleApprove(f._id)} title="Approve Payment">
                                                                 <i className="bi bi-check-lg"></i>
                                                             </Button>
+                                                            <Button size="sm" variant="danger" className="rounded-pill p-1 px-2" onClick={() => handleReject(f._id)} title="Reject Payment">
+                                                                <i className="bi bi-x-lg"></i>
+                                                            </Button>
                                                         </>
                                                     )}
-                                                    <Button size="sm" variant="outline-info" className="rounded-pill p-1 px-2 text-decoration-none" onClick={() => navigate('/manage-students')} title="View Student">
-                                                        <i className="bi bi-person"></i>
-                                                    </Button>
+                                               
                                                 </div>
                                             </td>
                                         </tr>
@@ -208,6 +215,36 @@ const AllFees = () => {
                         </div>
                     </Card.Body>
                 </Card>
+
+                {/* View Voucher Modal */}
+                <Modal show={showViewModal} onHide={() => setShowViewModal(false)} size="lg" centered>
+                    <Modal.Header closeButton className="border-0 pb-0">
+                        <Modal.Title className="fw-bold">Payment Voucher Preview</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body className="text-center p-4">
+                        {selectedVoucher ? (
+                            <img 
+                                src={selectedVoucher} 
+                                alt="Payment Voucher" 
+                                className="img-fluid rounded-3 shadow-sm border"
+                                style={{ maxHeight: '70vh' }}
+                                onError={(e) => {
+                                    // Fallback if the path is slightly different
+                                    if (!e.target.src.includes('/images/')) {
+                                        e.target.src = e.target.src.replace('/uploads/', '/uploads/images/');
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <p className="text-muted">No voucher image available.</p>
+                        )}
+                    </Modal.Body>
+                    <Modal.Footer className="border-0 pt-0 justify-content-center">
+                        <Button variant="secondary" className="rounded-pill px-4" onClick={() => setShowViewModal(false)}>
+                            Close Preview
+                        </Button>
+                    </Modal.Footer>
+                </Modal>
             </Container>
 
             <style>

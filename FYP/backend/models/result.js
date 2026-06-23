@@ -1,42 +1,53 @@
-const mongoose= require("mongoose");
-const Schema= mongoose.Schema;
+const mongoose = require("mongoose");
+const schema = mongoose.Schema;
 
-const Result=new Schema(
-    {
-        
-        studentId:{
-            type: mongoose.Schema.Types.ObjectId,
-            ref:'student'
-        },
-        teacherId:{
-            type:mongoose.Schema.Types.ObjectId,
-            ref:'teacher'
-        },
-        subject:{
-            type:String,
-            required: true
-        },
-        obtainedMarks:{
-            type: mongoose.Schema.Types.Decimal128,
-            required: true
-        },
-        totalMarks:{
-            type: Number,
-            required:true
-        },
-        ExamType:{
-            type:String,
-            required:true
-        }},
-        {timestamps:true});
+const ResultSchema = new schema({
+    studentId: {
+        type: String,
+        required: true
+    },
+    studentName: {
+        type: String,
+        required: true
+    },
+    classNo: {
+        type: String,
+        required: true
+    },
+    examType: {
+        type: String,
+        required: true
+    },
+    subjects: [{
+        subjectId: String,
+        name: String,
+        score: Number,
+        totalMarks: Number
+    }],
+    grandTotal: {
+        type: Number,
+        required: true
+    },
+    maxTotal: {
+        type: Number,
+        required: true
+    },
+    grade: {
+        type: String,
+        required: true
+    },
+    expiryDate: {
+        type: Date,
+        required: true
+    },
+    markedBy: {
+        type: String, // Teacher email
+        required: true
+    }
+}, { timestamps: true });
 
-const result=mongoose.model("result",Result);
-module.exports=result;
+// Ensure unique result per student per exam type
+ResultSchema.index({ studentId: 1, examType: 1 }, { unique: true });
 
-
-
-
-
-
-
-
+const Result = mongoose.model("result", ResultSchema);
+module.exports = Result;

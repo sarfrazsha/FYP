@@ -11,7 +11,7 @@ const TopHeader = ({ onToggleSidebar }) => {
             const role = localStorage.getItem('userRole') || '';
             if (!email) return;
 
-            const res = await fetch(`http://localhost:8080/api/announcements?role=${role.toLowerCase()}`);
+            const res = await fetch(`/api/announcements?role=${role.toLowerCase()}`);
             if (res.ok) {
                 const data = await res.json();
                 // Filter announcements where current user's email is NOT in readBy array
@@ -47,7 +47,7 @@ const TopHeader = ({ onToggleSidebar }) => {
         setUnreadCount(0); // instant visual clear
         if (email) {
             try {
-                await fetch('http://localhost:8080/api/announcements/mark-all-read', {
+                await fetch('/api/announcements/mark-all-read', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email })

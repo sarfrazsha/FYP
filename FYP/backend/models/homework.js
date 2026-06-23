@@ -1,32 +1,38 @@
-const mongoose= require("mongoose");
-const Schema= mongoose.Schema;
+const mongoose = require("mongoose");
+const schema = mongoose.Schema;
 
-const Homework= new Schema({
-    classId:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:'class'
+const HomeworkSchema = new schema({
+    title: {
+        type: String,
+        required: true
     },
-    teacherId:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:'teacher'
+    subject: {
+        type: String,
+        required: true
     },
-    title:{
-        type:String,
-        required:true
+    dueDate: {
+        type: Date,
+        required: true
     },
-    description:{
-        type:String,
-        required:true
+    description: {
+        type: String,
+        required: true
     },
-    Due_Date:{
-        type:Date,
-        default:Date.now,
-        required:true
+    fileName: {
+        type: String
+    },
+    filePath: {
+        type: String
+    },
+    classNo: {
+        type: String,
+        required: true
+    },
+    assignedBy: {
+        type: String, // Teacher email
+        required: true
+    }
+}, { timestamps: true });
 
-    },
-
-
-},{timestamps:true});
-
-const homework=mongoose.model("homework",Homework);
-module.exports=homework;
+const Homework = mongoose.model("homework", HomeworkSchema);
+module.exports = Homework;

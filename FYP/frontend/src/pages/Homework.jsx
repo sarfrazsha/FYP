@@ -2,20 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { Container, Table, Button, Modal, Form, Card, Badge, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import Axios from 'axios';
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const Homework = () => {
     const navigate = useNavigate();
     const role = localStorage.getItem('userRole')?.toLowerCase();
-    const [homeworks, setHomeworks] = useState([
-        { id: 1, title: 'Math Algebra Basics', subject: 'Mathematics', dueDate: '2026-03-10', description: 'Solve exercises 1-10 on page 45.', fileName: 'algebra_intro.pdf' },
-        { id: 2, title: 'English Essay: The Future', subject: 'English', dueDate: '2026-03-12', description: 'Write a 500-word essay about future technology.', fileName: 'essay_guidelines.docx' }
-    ]);
+    const userEmail = localStorage.getItem('userEmail');
+    const cNo = localStorage.getItem('classNo');
+    const selectedChildClass = localStorage.getItem('selectedChildClass');
+    const userClass = (role === 'parent' && selectedChildClass) ? selectedChildClass : (cNo || localStorage.getItem('teacherClass'));
+
+    const [homeworks, setHomeworks] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
     const [showModal, setShowModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentHomeworkId, setCurrentHomeworkId] = useState(null);
     const [selectedHomework, setSelectedHomework] = useState(null);
+    const [submissions, setSubmissions] = useState([]);
+    const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
+    const [updatingStatus, setUpdatingStatus] = useState(null);
     const [newHomework, setNewHomework] = useState({ title: '', subject: '', dueDate: '', description: '', file: null });
 
     const handleClose = () => {
@@ -30,6 +40,23 @@ const Homework = () => {
         setSelectedHomework(null);
     };
 
+    const fetchHomework = async () => {
+        if (!userClass) return;
+        setLoading(true);
+        try {
+            const res = await Axios.get(`/api/homework/class/${userClass}`);
+            setHomeworks(res.data);
+        } catch (err) {
+            console.error("Error fetching homework:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchHomework();
+    }, [userClass]);
+
     const handleShow = () => setShowModal(true);
 
     const handleView = (hw) => {
@@ -38,46 +65,93 @@ const Homework = () => {
     };
 
     const handleEdit = (e, hw) => {
-        e.stopPropagation(); // Prevent row click
+        e.stopPropagation(); 
         setIsEditing(true);
-        setCurrentHomeworkId(hw.id);
+        setCurrentHomeworkId(hw._id || hw.id);
+        
+        // Format date for datetime-local: YYYY-MM-DDTHH:MM
+        const date = new Date(hw.dueDate);
+        const formattedDate = date.toISOString().slice(0, 16);
+
         setNewHomework({
             title: hw.title,
             subject: hw.subject,
-            dueDate: hw.dueDate,
+            dueDate: formattedDate,
             description: hw.description,
-            file: null // Files aren't easily pre-filled in input[type=file]
+            file: null 
         });
         setShowModal(true);
     };
 
-    const handleDelete = (e, id) => {
-        e.stopPropagation(); // Prevent row click
-        if (window.confirm('Are you sure you want to delete this assignment?')) {
-            setHomeworks(homeworks.filter(hw => hw.id !== id));
+    const handleSubmissions = async (e, hw) => {
+        e.stopPropagation();
+        setSelectedHomework(hw);
+        setShowSubmissionsModal(true);
+        try {
+            const res = await Axios.get(`/api/homework/${hw._id}/submissions`);
+            setSubmissions(res.data);
+        } catch (err) {
+            console.error("Error fetching submissions:", err);
         }
     };
 
-    const handleSave = () => {
-        if (isEditing) {
-            setHomeworks(homeworks.map(hw =>
-                hw.id === currentHomeworkId
-                    ? {
-                        ...hw,
-                        ...newHomework,
-                        fileName: newHomework.file ? newHomework.file.name : hw.fileName
-                    }
-                    : hw
-            ));
-        } else {
-            const entry = {
-                id: Date.now(),
-                ...newHomework,
-                fileName: newHomework.file ? newHomework.file.name : 'No file'
-            };
-            setHomeworks([...homeworks, entry]);
+    const toggleStatus = async (sub) => {
+        const newStatus = sub.status === 'Pending' ? 'Submitted' : 'Pending';
+        setUpdatingStatus(sub._id);
+        try {
+            await Axios.put(`/api/homework/submission/${sub._id}`, { status: newStatus });
+            setSubmissions(submissions.map(s => s._id === sub._id ? { ...s, status: newStatus } : s));
+        } catch (err) {
+            console.error("Error updating status:", err);
+        } finally {
+            setUpdatingStatus(null);
         }
-        handleClose();
+    };
+
+    const handleSave = async () => {
+        if (!newHomework.title || !newHomework.subject || !newHomework.dueDate) {
+            alert("Please fill in all required fields.");
+            return;
+        }
+
+        setSaving(true);
+        const formData = new FormData();
+        formData.append('title', newHomework.title);
+        formData.append('subject', newHomework.subject);
+        formData.append('dueDate', newHomework.dueDate);
+        formData.append('description', newHomework.description);
+        formData.append('classNo', userClass);
+        formData.append('assignedBy', userEmail);
+        if (newHomework.file) {
+            formData.append('file', newHomework.file);
+        }
+
+        try {
+            if (isEditing) {
+                await Axios.put(`/api/homework/${currentHomeworkId}`, formData);
+            } else {
+                await Axios.post('/api/homework', formData);
+            }
+            fetchHomework();
+            handleClose();
+        } catch (err) {
+            console.error("Error saving homework:", err);
+            alert("Failed to save homework.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async (e, id) => {
+        e.stopPropagation();
+        if (window.confirm('Are you sure you want to delete this assignment?')) {
+            try {
+                await Axios.delete(`/api/homework/${id}`);
+                fetchHomework();
+            } catch (err) {
+                console.error("Error deleting homework:", err);
+            }
+        }
     };
 
     return (
@@ -133,7 +207,7 @@ const Homework = () => {
                             <tbody>
                                 {homeworks.map((hw) => (
                                     <tr
-                                        key={hw.id}
+                                        key={hw._id}
                                         className="align-middle"
                                         onClick={() => handleView(hw)}
                                         style={{ cursor: 'pointer' }}
@@ -143,7 +217,7 @@ const Homework = () => {
                                             <div className="text-muted x-small text-truncate" style={{ maxWidth: '300px' }}>{hw.description}</div>
                                         </td>
                                         <td><Badge bg="info" className="bg-opacity-10 text-info px-2 py-1">{hw.subject}</Badge></td>
-                                        <td className="text-secondary">{hw.dueDate}</td>
+                                        <td className="text-secondary">{new Date(hw.dueDate).toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                                         <td>
                                             <div className="d-flex align-items-center text-primary text-decoration-none">
                                                 <i className="bi bi-file-earmark-arrow-down me-2"></i>
@@ -157,6 +231,15 @@ const Homework = () => {
                                             <td className="text-center">
                                                 <div className="d-flex justify-content-center gap-2">
                                                     <Button
+                                                        variant="outline-info"
+                                                        size="sm"
+                                                        className="rounded-circle border-0 p-2"
+                                                        onClick={(e) => handleSubmissions(e, hw)}
+                                                        title="Check Submissions"
+                                                    >
+                                                        <i className="bi bi-people-fill"></i>
+                                                    </Button>
+                                                    <Button
                                                         variant="outline-primary"
                                                         size="sm"
                                                         className="rounded-circle border-0 p-2"
@@ -169,7 +252,7 @@ const Homework = () => {
                                                         variant="outline-danger"
                                                         size="sm"
                                                         className="rounded-circle border-0 p-2"
-                                                        onClick={(e) => handleDelete(e, hw.id)}
+                                                        onClick={(e) => handleDelete(e, hw._id)}
                                                         title="Delete"
                                                     >
                                                         <i className="bi bi-trash3"></i>
@@ -189,7 +272,7 @@ const Homework = () => {
                     </Card.Body>
                 </Card>
 
-                {/* View Homework Details Modal */}
+                
                 <Modal show={showViewModal} onHide={handleViewClose} centered size="lg">
                     <Modal.Header closeButton className="border-0 pb-0">
                         <Modal.Title className="fw-bold text-primary">Assignment Details</Modal.Title>
@@ -205,9 +288,9 @@ const Homework = () => {
                                         </Badge>
                                     </Col>
                                     <Col md={4} className="text-md-end mt-3 mt-md-0">
-                                        <div className="text-muted small fw-bold text-uppercase">Due Date</div>
-                                        <div className="fw-bold text-danger fs-5">
-                                            <i className="bi bi-calendar-event me-2"></i>{selectedHomework.dueDate}
+                                        <div className="text-muted small fw-bold text-uppercase">Due Date & Time</div>
+                                        <div className="fw-bold text-danger fs-6">
+                                            <i className="bi bi-calendar-event me-2"></i>{new Date(selectedHomework.dueDate).toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                         </div>
                                     </Col>
                                 </Row>
@@ -234,7 +317,7 @@ const Homework = () => {
                                             <Button
                                                 variant="primary"
                                                 className="rounded-pill px-4"
-                                                onClick={() => alert(`Downloading: ${selectedHomework.fileName}`)}
+                                                onClick={() => window.open(`/${selectedHomework.filePath}`, '_blank')}
                                             >
                                                 <i className="bi bi-download me-2"></i>Download
                                             </Button>
@@ -249,7 +332,7 @@ const Homework = () => {
                     </Modal.Footer>
                 </Modal>
 
-                {/* Create/Edit Homework Modal */}
+               
                 <Modal show={showModal} onHide={handleClose} centered backdrop="static">
                     <Modal.Header closeButton className="border-0 pb-0">
                         <Modal.Title className="fw-bold">{isEditing ? 'Edit Assignment' : 'Create New Assignment'}</Modal.Title>
@@ -279,9 +362,9 @@ const Homework = () => {
                                 </Col>
                                 <Col md={6}>
                                     <Form.Group className="mb-3">
-                                        <Form.Label className="small fw-bold">Due Date</Form.Label>
+                                        <Form.Label className="small fw-bold">Due Date & Time</Form.Label>
                                         <Form.Control
-                                            type="date"
+                                            type="datetime-local"
                                             value={newHomework.dueDate}
                                             onChange={(e) => setNewHomework({ ...newHomework, dueDate: e.target.value })}
                                         />
@@ -302,7 +385,17 @@ const Homework = () => {
                                 <Form.Label className="small fw-bold">Attachments (Files)</Form.Label>
                                 <Form.Control
                                     type="file"
-                                    onChange={(e) => setNewHomework({ ...newHomework, file: e.target.files[0] })}
+                                    onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            if (file.size > MAX_FILE_SIZE) {
+                                                alert('System supports only up to 10 MB for uploads.');
+                                                e.target.value = '';
+                                                return;
+                                            }
+                                            setNewHomework({ ...newHomework, file });
+                                        }
+                                    }}
                                 />
                                 {isEditing && <Form.Text className="text-muted">Leave empty to keep existing file.</Form.Text>}
                             </Form.Group>
@@ -314,6 +407,56 @@ const Homework = () => {
                             {isEditing ? 'Save Changes' : 'Assign Homework'}
                         </Button>
                     </Modal.Footer>
+                </Modal>
+
+                {/* Submissions Management Modal */}
+                <Modal show={showSubmissionsModal} onHide={() => setShowSubmissionsModal(false)} centered size="lg">
+                    <Modal.Header closeButton className="border-0 pb-0">
+                        <Modal.Title className="fw-bold">
+                            Submission Tracking - {selectedHomework?.title}
+                        </Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body className="p-4">
+                        <div className="table-responsive">
+                            <Table hover className="align-middle border rounded-4 overflow-hidden">
+                                <thead className="bg-light">
+                                    <tr>
+                                        <th className="ps-4">Student Name</th>
+                                        <th className="text-center">Status</th>
+                                        <th className="text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {submissions.map(sub => (
+                                        <tr key={sub._id}>
+                                            <td className="ps-4 fw-bold">{sub.studentName}</td>
+                                            <td className="text-center">
+                                                <Badge bg={sub.status === 'Submitted' ? 'success' : 'warning'} className="bg-opacity-10 text-uppercase rounded-pill px-3" style={{ color: sub.status === 'Submitted' ? '#198754' : '#856404' }}>
+                                                    {sub.status}
+                                                </Badge>
+                                            </td>
+                                            <td className="text-center">
+                                                <Button 
+                                                    variant={sub.status === 'Submitted' ? "outline-warning" : "outline-success"} 
+                                                    size="sm" 
+                                                    className="rounded-pill px-3 fw-bold"
+                                                    disabled={updatingStatus === sub._id}
+                                                    onClick={() => toggleStatus(sub)}
+                                                >
+                                                    {updatingStatus === sub._id ? <Spinner size="sm" /> : (sub.status === 'Submitted' ? 'Mark Pending' : 'Mark Submitted')}
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {submissions.length === 0 && (
+                                        <tr>
+                                            <td colSpan="3" className="text-center py-4 text-muted">No students found for this class.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </Table>
+                        </div>
+                    </Modal.Body>
                 </Modal>
             </Container>
         </Layout>

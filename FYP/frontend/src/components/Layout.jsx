@@ -4,12 +4,45 @@ import Sidebar from './Sidebar';
 import TopHeader from './TopHeader';
 import Footer from './Footer';
 import AnnouncementMarquee from './AnnouncementMarquee';
+import ChildSelector from './ChildSelector';
 
 const Layout = ({ children }) => {
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const role = localStorage.getItem('userRole') || '';
+    const email = localStorage.getItem('userEmail') || '';
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState({ title: '', content: '' });
+
+    const [childrenData, setChildrenData] = useState([]);
+    const [selectedChildId, setSelectedChildId] = useState('');
+
+    useEffect(() => {
+        if (role?.toLowerCase() === 'parent') {
+            const storedChildren = localStorage.getItem('parentChildren');
+            if (storedChildren) {
+                const parsed = JSON.parse(storedChildren);
+                setChildrenData(parsed);
+                setSelectedChildId(localStorage.getItem('selectedChildId') || (parsed.length > 0 ? parsed[0].id : ''));
+            } else if (email) {
+                fetch(`/api/parent/children/${email}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        setChildrenData(data);
+                        localStorage.setItem('parentChildren', JSON.stringify(data));
+                        const selectedId = localStorage.getItem('selectedChildId') || (data.length > 0 ? data[0].id : '');
+                        setSelectedChildId(selectedId);
+                    })
+                    .catch(err => console.error("Fetch children error:", err));
+            }
+        }
+    }, [role, email]);
+
+    const handleChildSelect = (child) => {
+        setSelectedChildId(child.id);
+        localStorage.setItem('selectedChildId', child.id);
+        localStorage.setItem('selectedChildClass', child.classNo);
+        window.location.reload();
+    };
 
     // Polling for Transient Admin Alerts (In-Memory)
     useEffect(() => {
@@ -17,7 +50,7 @@ const Layout = ({ children }) => {
 
         const checkAlerts = async () => {
             try {
-                const res = await fetch(`http://localhost:8080/api/notifications/admin`);
+                const res = await fetch(`/api/notifications/admin`);
                 if (!res.ok) return;
                 const data = await res.json();
                 
@@ -55,6 +88,17 @@ const Layout = ({ children }) => {
                 {/* Announcement Marquee Banner – shown to non-admin users only */}
                 <AnnouncementMarquee role={role} />
 
+                {/* Global Child Selector for Parents */}
+                {role?.toLowerCase() === 'parent' && childrenData.length > 0 && (
+                    <div className="px-4 pt-3">
+                        <ChildSelector
+                            children={childrenData}
+                            selectedChildId={selectedChildId}
+                            onChildSelect={handleChildSelect}
+                        />
+                    </div>
+                )}
+
                 {/* Page Content */}
                 <main className="p-4 flex-grow-1" style={{ marginBottom: '2rem' }}>
                     {children}
@@ -81,4 +125,4 @@ const Layout = ({ children }) => {
     );
 };
 
-export default Layout;
+export default Layout;

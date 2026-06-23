@@ -26,6 +26,11 @@ const Fee = new schema(
             type: String,
             required: true
         },
+        year: {
+            type: Number,
+            required: true,
+            default: () => new Date().getFullYear()
+        },
         adminVoucher: {
             type: String,
             required: true

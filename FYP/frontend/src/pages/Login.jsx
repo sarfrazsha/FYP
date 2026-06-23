@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-// import { Container, Form, Button, Card, InputGroup } from 'react-bootstrap';
 import { Container, Form, Button, Row, Col, Card, Alert, Modal, InputGroup, ListGroup } from 'react-bootstrap';
 
 import { useParams, useNavigate } from 'react-router-dom';
@@ -24,8 +23,8 @@ const Login = () => {
 const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-        // FIXED: Added http://localhost:8080
-        const response = await fetch('http://localhost:8080/student/login', {
+        
+        const response = await fetch('/student/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, role, password }),
@@ -34,7 +33,7 @@ const handleSubmit = async (e) => {
         const data = await response.json();
 
         if (response.ok) {
-            // Save data first
+           
             localStorage.setItem('userEmail', email);
             localStorage.setItem('userRole', role);
             localStorage.setItem('userName', data.uname || "User");
@@ -42,10 +41,17 @@ const handleSubmit = async (e) => {
             if (data.studentId) localStorage.setItem('studentId', data.studentId);
             if (data.classNo) localStorage.setItem('classNo', data.classNo);
             if (data.teacherClass) localStorage.setItem('teacherClass', data.teacherClass);
+            if (data.children) {
+                localStorage.setItem('parentChildren', JSON.stringify(data.children));
+                if (data.children.length > 0) {
+                    localStorage.setItem('selectedChildId', data.selectedChildId || data.children[0].id);
+                    localStorage.setItem('selectedChildClass', data.children[0].classNo);
+                }
+            }
             
             setShowSuccessModal(true);
             
-            // Now redirect with state
+            
             setTimeout(() => {
                 navigate('/dashboard', { state: { email, role, uname: data.uname, profilePic: data.profilePic } });
             }, 1000);
@@ -97,6 +103,7 @@ const handleSubmit = async (e) => {
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             required
+                                            minLength="8"
                                             className="border-end-0 border-secondary-subtle"
                                         />
                                         <InputGroup.Text 
@@ -123,7 +130,7 @@ const handleSubmit = async (e) => {
                 </Container>
             </div>
             <div>
-                    {/* Success Modal */}
+                    
                                 <Modal show={showSuccessModal} onHide={() => setShowSuccessModal(false)} centered>
                                     <Modal.Header closeButton>
                                         <Modal.Title className="text-success">Success!</Modal.Title>

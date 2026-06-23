@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import logo from '../assets/logo.png';
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Ccircle cx='45' cy='45' r='45' fill='%23374151'/%3E%3Ccircle cx='45' cy='34' r='18' fill='%236B7280'/%3E%3Cellipse cx='45' cy='80' rx='28' ry='22' fill='%236B7280'/%3E%3C/svg%3E";
 
 const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
@@ -15,11 +16,16 @@ const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
     const role = location.state?.role || localStorage.getItem('userRole');
     const email = location.state?.email || localStorage.getItem('userEmail');
     const uname = location.state?.uname || localStorage.getItem('userName');
-    // const image= location.state?.proflie;
-    // Profile picture: stored in localStorage or passed via state
-    const [profilePic, setProfilePic] = useState(
-        () => location.state?.profilePic || localStorage.getItem('userProfilePic') || DEFAULT_AVATAR
-    );
+    
+    const [profilePic, setProfilePic] = useState(() => {
+        const stored = localStorage.getItem('userProfilePic');
+        if (!stored) return location.state?.profilePic || DEFAULT_AVATAR;
+        if (stored.startsWith('/') || stored.startsWith('http') || stored.startsWith('data:')) return stored;
+        
+        // Handle relative paths from DB (e.g. 'images/abc.jpg' or 'abc.jpg')
+        const prefix = stored.startsWith('images/') ? '' : 'images/';
+        return `/uploads/${prefix}${stored}`;
+    });
     const [showPicMenu, setShowPicMenu] = useState(false);
     // Entity action dialog: { label, addPath, managePath, step: 'action' | 'class' }
     const [entityDialog, setEntityDialog] = useState(null);
@@ -31,7 +37,7 @@ const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
             const fetchClasses = async () => {
                 setLoadingClasses(true);
                 try {
-                    const res = await axios.get('http://localhost:8080/api/classes');
+                    const res = await axios.get('/api/classes');
                     setClasses(res.data);
                 } catch (err) {
                     console.error("Error fetching classes:", err);
@@ -58,24 +64,46 @@ const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
         setShowPicMenu(false);
     };
 
-    const handleFileChange = (e) => {
+    const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const base64 = ev.target.result;
-            setProfilePic(base64);
-            localStorage.setItem('userProfilePic', base64);
-        };
-        reader.readAsDataURL(file);
-        // reset so same file can be re-selected later
+
+        const formData = new FormData();
+        formData.append('profilePic', file);
+        formData.append('email', email);
+        formData.append('role', role);
+
+        try {
+            const res = await axios.post('/api/user/profile-picture', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const newPicUrl = `/uploads/images/${res.data.profilePic}`;
+            setProfilePic(newPicUrl);
+            localStorage.setItem('userProfilePic', newPicUrl);
+            alert("Profile picture updated successfully!");
+        } catch (err) {
+            console.error("Error uploading profile pic:", err);
+            alert("Failed to update profile picture.");
+        }
+        
         e.target.value = '';
     };
 
-    const handleDeletePic = () => {
-        setProfilePic(DEFAULT_AVATAR);
-        localStorage.removeItem('userProfilePic');
-        setShowPicMenu(false);
+    const handleDeletePic = async () => {
+        if (!window.confirm("Are you sure you want to delete your profile picture?")) return;
+        
+        try {
+            await axios.delete('/api/user/profile-picture', {
+                data: { email, role }
+            });
+            setProfilePic(DEFAULT_AVATAR);
+            localStorage.removeItem('userProfilePic');
+            setShowPicMenu(false);
+            alert("Profile picture deleted successfully!");
+        } catch (err) {
+            console.error("Error deleting profile pic:", err);
+            alert("Failed to delete profile picture.");
+        }
     };
 
 
@@ -207,7 +235,15 @@ const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
                     ref={fileInputRef}
                     accept="image/*"
                     style={{ display: 'none' }}
-                    onChange={handleFileChange}
+                    onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file && file.size > MAX_FILE_SIZE) {
+                            alert('System supports only up to 10 MB for uploads.');
+                            e.target.value = '';
+                            return;
+                        }
+                        handleFileChange(e);
+                    }}
                 />
             </div>
 
@@ -237,7 +273,7 @@ const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
 
                         {/* Teachers — opens action dialog */}
                         <Nav.Link
-                            onClick={() => openEntityDialog('Teachers', '/manage-users', '/manage-teachers')}
+                            onClick={() => openEntityDialog('Teachers', '/manage-teachers', '/manage-teachers')}
                             className={`d-flex align-items-center px-4 py-3 mb-2 rounded-3 text-white transition-all ${
                                 location.pathname === '/manage-teachers' ? 'bg-primary shadow-lg active' : 'opacity-75 hover-bg-dark'
                             }`}
@@ -258,6 +294,7 @@ const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
                         </Nav.Link>
 
                         {navLink('/manage-classes', 'bi-building-fill', 'Classes')}
+                        {navLink('/manage-timetable', 'bi-calendar3-week', 'Manage Timetable')}
                         {navLink('/issue-fees', 'bi-plus-circle-fill', 'Issue Fees')}
                         {navLink('/all-fees', 'bi-cash-coin', 'Fee Records')}
                     </>
@@ -271,7 +308,9 @@ const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
                         </div>
                         {navLink('/attendance', 'bi-calendar-check-fill', 'Attendance')}
                         {navLink('/manage-results', 'bi-award-fill', 'Manage Results')}
+                        {navLink('/manage-datesheet', 'bi-calendar-event', 'Manage Exams')}
                         {navLink('/homework', 'bi-book-fill', 'Homework')}
+                        {navLink('/schedule', 'bi-calendar3', 'Class Schedule')}
                     </>
                 )}
 
@@ -283,6 +322,8 @@ const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
                         </div>
                         {navLink('/results', 'bi-award-fill', 'Results')}
                         {navLink('/homework', 'bi-book-fill', 'Homework')}
+                        {navLink('/schedule', 'bi-calendar3', 'Class Schedule')}
+                        {navLink('/datesheet', 'bi-calendar-event', 'Datesheet')}
                     </>
                 )}
 
@@ -294,6 +335,7 @@ const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
                         </div>
                         {navLink('/results', 'bi-award-fill', 'Results')}
                         {navLink('/my-fees', 'bi-cash-stack', 'My Fees')}
+                        {navLink('/datesheet', 'bi-calendar-event', 'Datesheet')}
                     </>
                 )}
             </Nav>
@@ -369,8 +411,13 @@ const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
                                                 if (entityDialog.label === 'Teachers') {
                                                     setEntityDialog(null);
                                                     navigate(entityDialog.managePath, { state: { email, role, uname } });
+                                                } else if (entityDialog.label === 'Students') {
+                                                    setEntityDialog(null);
+                                                    navigate('/manage-classes', { state: { email, role, uname } });
+                                                } else if (entityDialog.label === 'Parents') {
+                                                    setEntityDialog(null);
+                                                    navigate('/parent-hub', { state: { email, role, uname } });
                                                 } else {
-                                                    // For Students/Parents, proceed to class selection
                                                     setEntityDialog(prev => ({ ...prev, step: 'class' }));
                                                 }
                                             }}
@@ -406,13 +453,12 @@ const Sidebar = ({ showMobileSidebar, onHideMobileSidebar }) => {
                                                     variant="light"
                                                     className="text-start border-0 py-2 px-3 rounded-3 hover-bg-primary-subtle"
                                                     onClick={() => {
-                                                        const path = entityDialog.managePath;
                                                         setEntityDialog(null);
-                                                        navigate(path, { state: { email, role, uname, classFilter: cls } });
+                                                        navigate('/manage-classes', { state: { email, role, uname, classFilter: cls } });
                                                     }}
                                                 >
                                                     <i className="bi bi-arrow-right-short me-2 text-primary"></i>
-                                                    Class {cls}
+                                                    {cls}
                                                 </Button>
                                             ))}
                                             <hr className="my-2 opacity-10" />

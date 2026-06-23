@@ -5,6 +5,8 @@ import { useLocation, Navigate, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Axios from 'axios';
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 const ManageStudents = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -26,7 +28,7 @@ const ManageStudents = () => {
         }
     }, [openAdd, classFilter]);
 
-    // SDS Requirement: Role-Based Access Control
+    
     if (!email || (role !== 'Admin' && role !== 'admin')) {
         return <Navigate to="/" replace />;
     }
@@ -34,81 +36,13 @@ const ManageStudents = () => {
     const [validated, setValidated] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [rollNoError, setRollNoError] = useState('');
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-    // Hardcoded mock data
-    const initialStudents = [
-        {
-            id: '1',
-            studentName: 'Abdul Basit',
-            studentAge: '14',
-            studentRollNo: '2024-001',
-            studentGender: 'Male',
-            studentClass: '5th Grade',
-            studentEmail: 'abdul@gmail.com',
-            studentPassword: '',
-            studentProfilePicture: '',
-            parentName: 'Khalid Mehmood',
-            parentPhone: '03245627336',
-            parentEmail: 'khalid@gmail.com',
-            parentPassword: '',
-            parentAddress: 'House 14, Street 3, Mohalla Qadirabad, Multan',
-            parentProfilePicture: ''
-        },
-        {
-            id: '2',
-            studentName: 'M Muntaha',
-            studentAge: '13',
-            studentRollNo: '2024-002',
-            studentGender: 'Male',
-            studentClass: '4th Grade',
-            studentEmail: 'muntaha@gmail.com',
-            studentPassword: '',
-            studentProfilePicture: '',
-            parentName: 'Tariq Hussain',
-            parentPhone: '03017894523',
-            parentEmail: 'tariq@gmail.com',
-            parentPassword: '',
-            parentAddress: 'Gali Masjid Wali, Bahawalpur',
-            parentProfilePicture: ''
-        },
-        {
-            id: '3',
-            studentName: 'M Sharafat',
-            studentAge: '15',
-            studentRollNo: '2024-003',
-            studentGender: 'Male',
-            studentClass: '5th Grade',
-            studentEmail: 'sharafat@gmail.com',
-            studentPassword: '',
-            studentProfilePicture: '',
-            parentName: 'Nawaz Ahmed',
-            parentPhone: '03129876543',
-            parentEmail: 'nawaz@gmail.com',
-            parentPassword: '',
-            parentAddress: 'Mohalla Ahmedpur, Near Jamia Masjid, Rahim Yar Khan',
-            parentProfilePicture: ''
-        },
-        {
-            id: '4',
-            studentName: 'M Qasim',
-            studentAge: '12',
-            studentRollNo: '2024-004',
-            studentGender: 'Male',
-            studentClass: '3rd Grade',
-            studentEmail: 'qasim@gmail.com',
-            studentPassword: '',
-            studentProfilePicture: '',
-            parentName: 'Aslam Shah',
-            parentPhone: '03001234567',
-            parentEmail: 'aslam@gmail.com',
-            parentPassword: '',
-            parentAddress: 'House 22, Gulshan Colony, Lahore',
-            parentProfilePicture: ''
-        }
-    ];
+    
+    const [students, setStudents] = useState([]);
+    const [classes, setClasses] = useState([]);
 
-    const [students, setStudents] = useState(initialStudents);
 
     const [formData, setFormData] = useState({
         studentName: '',
@@ -127,32 +61,90 @@ const ManageStudents = () => {
         parentProfilePicture: ''
     });
 
-    // Image previews for diagnostic purposes
+    
     const [previews, setPreviews] = useState({
         student: null,
         parent: null
     });
 
 
-    // 1. Fetch Students from Node/Express Middleware
+    
     const fetchStudents = async () => {
         setLoading(true);
         try {
-            const response = await Axios.get('http://localhost:8080/api/students-detailed');
-            // Merge: hardcoded mock data + database data
-            setStudents([...initialStudents, ...response.data]);
+            const response = await Axios.get('/api/students-detailed');
+           
+            setStudents(response.data);
         } catch (err) {
             console.error("Fetch error:", err);
-            setStudents(initialStudents);
+            setStudents([]);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
-    useEffect(() => { fetchStudents(); }, []);
+    const fetchClasses = async () => {
+        try {
+            const response = await Axios.get('/api/classes');
+            setClasses(response.data);
+        } catch (err) {
+            console.error("Error fetching classes:", err);
+        }
+    };
+
+    useEffect(() => { 
+        fetchStudents();
+        fetchClasses();
+    }, []);
+
+
+    // Validate roll number against selected class
+    const validateRollNo = (rollNo, studentClass) => {
+        if (!rollNo || !studentClass) { setRollNoError(''); return true; }
+        // Expected format: [digits]-[classNum][section] e.g. 01-5A
+        const match = rollNo.match(/^(\d+)-(\d+)([A-Za-z])$/);
+        if (!match) {
+            setRollNoError('Format must be [RollNo]-[Class][Section] e.g. 01-5A');
+            return false;
+        }
+        const rollClass = match[2];
+        const rollSection = match[3].toUpperCase();
+        // studentClass format: "5 - A"
+        const classParts = studentClass.split(' - ');
+        if (classParts.length === 2) {
+            const expectedClass = classParts[0].trim();
+            const expectedSection = classParts[1].trim().toUpperCase();
+            if (rollClass !== expectedClass || rollSection !== expectedSection) {
+                setRollNoError(`Roll suffix must match class ${expectedClass}${expectedSection} (e.g. 01-${expectedClass}${expectedSection})`);
+                return false;
+            }
+        }
+        setRollNoError('');
+        return true;
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        let updated = { ...formData, [name]: value };
+        
+        // Auto-update roll number suffix if class changes
+        if (name === 'studentClass' && value) {
+            const classParts = value.split(' - ');
+            if (classParts.length === 2) {
+                const prefix = formData.studentRollNo.split('-')[0] || '';
+                const suffix = `-${classParts[0]}${classParts[1]}`;
+                updated.studentRollNo = prefix + suffix;
+            }
+        }
+        
+        setFormData(updated);
+        
+        if (name === 'studentRollNo' || name === 'studentClass') {
+            validateRollNo(
+                name === 'studentRollNo' ? value : updated.studentRollNo,
+                name === 'studentClass' ? value : updated.studentClass
+            );
+        }
     };
 
  
@@ -166,6 +158,22 @@ const ManageStudents = () => {
         return;
     }
 
+    // Cross-validate roll number against class
+    if (!validateRollNo(formData.studentRollNo, formData.studentClass)) {
+        setValidated(true);
+        return;
+    }
+
+    // Password length check
+    if (formData.studentPassword.length < 8) {
+        setError('Student password must be at least 8 characters.');
+        return;
+    }
+    if (formData.parentPassword.length < 8) {
+        setError('Parent password must be at least 8 characters.');
+        return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -173,7 +181,7 @@ const ManageStudents = () => {
     console.log("Form State:", formData);
 
     try {
-        // Create FormData to send files
+       
         const data = new FormData();
         data.append("studentName", formData.studentName);
         data.append("studentAge", formData.studentAge);
@@ -183,7 +191,7 @@ const ManageStudents = () => {
         data.append("studentEmail", formData.studentEmail);
         data.append("studentPassword", formData.studentPassword);
         
-        // Append File objects directly
+        
         if (formData.studentProfilePicture) {
             console.log("Attaching Student Picture:", formData.studentProfilePicture.name);
             data.append("studentProfilePicture", formData.studentProfilePicture);
@@ -204,11 +212,11 @@ const ManageStudents = () => {
             console.warn("No Parent Picture selected.");
         }
 
-        // Send to backend - let Axios handle Content-Type and boundaries
-        const response = await Axios.post('http://localhost:8080/students', data);
+        
+        const response = await Axios.post('/students', data);
         console.log("Upload Success:", response.data);
 
-        // Update local state by re-fetching
+        
         await fetchStudents();
 
         setShowSuccessModal(true);
@@ -278,8 +286,15 @@ const ManageStudents = () => {
                                             <Row>
                                                 <Col md={6}>
                                                     <Form.Group className="mb-3">
-                                                        <Form.Label className="small fw-bold">Roll Number (Unique ID)</Form.Label>
-                                                        <Form.Control required name="studentRollNo" value={formData.studentRollNo} onChange={handleChange} placeholder="e.g. 2024-001" />
+                                                        <Form.Label className="small fw-bold">Class</Form.Label>
+                                                        <Form.Select required name="studentClass" value={formData.studentClass} onChange={handleChange}>
+                                                            <option value="">Select Class...</option>
+                                                            {classes.map(c => (
+                                                                <option key={c.id} value={`${c.name} - ${c.section}`}>
+                                                                    {c.name} - {c.section}
+                                                                </option>
+                                                            ))}
+                                                        </Form.Select>
                                                     </Form.Group>
                                                 </Col>
                                                 <Col md={6}>
@@ -302,15 +317,60 @@ const ManageStudents = () => {
                                                 </Col>
                                                 <Col md={6}>
                                                     <Form.Group className="mb-3">
-                                                        <Form.Label className="small fw-bold">Class</Form.Label>
-                                                        <Form.Select required name="studentClass" value={formData.studentClass} onChange={handleChange}>
-                                                            <option value="">Select Class...</option>
-                                                            <option>Class 1</option>
-                                                            <option>Class 2</option>
-                                                            <option>Class 3</option>
-                                                            <option>Class 4</option>
-                                                            <option>Class 5</option>
-                                                        </Form.Select>
+                                                        <Form.Label className="small fw-bold">Roll Number (Unique ID)</Form.Label>
+                                                        <Form.Control 
+                                                            required 
+                                                            name="studentRollNo" 
+                                                            placeholder="e.g. 01-5A"
+                                                            value={formData.studentRollNo} 
+                                                            onChange={(e) => {
+                                                                const value = e.target.value;
+                                                                const classParts = formData.studentClass.split(' - ');
+                                                                const suffix = classParts.length === 2 ? `-${classParts[0]}${classParts[1]}` : '';
+                                                                
+                                                                if (!suffix) {
+                                                                    setFormData({...formData, studentRollNo: value});
+                                                                    return;
+                                                                }
+
+                                                                // Prevent user from removing the hyphen or modifying the suffix
+                                                                const prefix = value.split('-')[0];
+                                                                setFormData({...formData, studentRollNo: prefix + suffix});
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                const classParts = formData.studentClass.split(' - ');
+                                                                const suffix = classParts.length === 2 ? `-${classParts[0]}${classParts[1]}` : '';
+                                                                if (!suffix) return;
+
+                                                                const selectionStart = e.target.selectionStart;
+                                                                const prefixLength = formData.studentRollNo.length - suffix.length;
+
+                                                                // Prevent backspacing/deleting the suffix part
+                                                                if ((e.key === 'Backspace' || e.key === 'Delete') && selectionStart > prefixLength) {
+                                                                    e.preventDefault();
+                                                                }
+                                                                // Prevent typing inside or after the suffix
+                                                                if (selectionStart > prefixLength && e.key.length === 1) {
+                                                                    e.preventDefault();
+                                                                }
+                                                            }}
+                                                            onSelect={(e) => {
+                                                                // Keep cursor before the suffix if they click into it
+                                                                const classParts = formData.studentClass.split(' - ');
+                                                                const suffix = classParts.length === 2 ? `-${classParts[0]}${classParts[1]}` : '';
+                                                                if (!suffix) return;
+                                                                
+                                                                const prefixLength = formData.studentRollNo.length - suffix.length;
+                                                                if (e.target.selectionStart > prefixLength) {
+                                                                    e.target.setSelectionRange(prefixLength, prefixLength);
+                                                                }
+                                                            }}
+                                                            isInvalid={!!rollNoError}
+                                                        />
+                                                        {rollNoError && <Form.Control.Feedback type="invalid">{rollNoError}</Form.Control.Feedback>}
+                                                        <Form.Text className="text-muted" style={{ fontSize: '10px' }}>
+                                                            Suffix is static based on selected class.
+                                                        </Form.Text>
                                                     </Form.Group>
                                                 </Col>
                                             </Row>
@@ -320,7 +380,8 @@ const ManageStudents = () => {
                                             </Form.Group>
                                             <Form.Group className="mb-3">
                                                 <Form.Label className="small fw-bold">Account Password</Form.Label>
-                                                <Form.Control required type="password" name="studentPassword" value={formData.studentPassword} onChange={handleChange} />
+                                                <Form.Control required type="password" name="studentPassword" minLength="8" value={formData.studentPassword} onChange={handleChange} />
+                                                <Form.Text className="text-muted" style={{ fontSize: '10px' }}>Minimum 8 characters</Form.Text>
                                             </Form.Group>
                                             <Form.Group className="mb-3">
                                                 <Form.Label className="small fw-bold">Student Profile Picture</Form.Label>
@@ -331,6 +392,11 @@ const ManageStudents = () => {
                                                     onChange={e => {
                                                         const file = e.target.files[0];
                                                         if (file) {
+                                                            if (file.size > MAX_FILE_SIZE) {
+                                                                alert('System supports only up to 10 MB for uploads.');
+                                                                e.target.value = '';
+                                                                return;
+                                                            }
                                                             setFormData(prev => ({ ...prev, studentProfilePicture: file }));
                                                             setPreviews(prev => ({ ...prev, student: URL.createObjectURL(file) }));
                                                         }
@@ -345,7 +411,7 @@ const ManageStudents = () => {
                                             </Form.Group>
                                         </Col>
 
-                                        {/* Tier 2: Linked Parent Information */}
+                                        
                                         <Col md={6} className="ps-md-4">
                                             <h6 className="text-success fw-bold mb-3 text-uppercase small">Linked Parent/Guardian Account</h6>
                                             <Form.Group className="mb-3">
@@ -362,7 +428,8 @@ const ManageStudents = () => {
                                             </Form.Group>
                                             <Form.Group className="mb-3">
                                                 <Form.Label className="small fw-bold">Guardian Password</Form.Label>
-                                                <Form.Control required type="password" name="parentPassword" value={formData.parentPassword} onChange={handleChange} />
+                                                <Form.Control required type="password" name="parentPassword" minLength="8" value={formData.parentPassword} onChange={handleChange} />
+                                                <Form.Text className="text-muted" style={{ fontSize: '10px' }}>Minimum 8 characters</Form.Text>
                                             </Form.Group>
                                             <Form.Group className="mb-3">
                                                 <Form.Label className="small fw-bold">Residential Address</Form.Label>
@@ -377,6 +444,11 @@ const ManageStudents = () => {
                                                     onChange={e => {
                                                         const file = e.target.files[0];
                                                         if (file) {
+                                                            if (file.size > MAX_FILE_SIZE) {
+                                                                alert('System supports only up to 10 MB for uploads.');
+                                                                e.target.value = '';
+                                                                return;
+                                                            }
                                                             setFormData(prev => ({ ...prev, parentProfilePicture: file }));
                                                             setPreviews(prev => ({ ...prev, parent: URL.createObjectURL(file) }));
                                                         }

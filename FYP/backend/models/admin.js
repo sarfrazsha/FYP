@@ -21,6 +21,9 @@ const Admin = new schema(
             type: String,
             required: true
         },
+        adminImage: {
+            type: String
+        }
       
     
     }
